@@ -1,11 +1,13 @@
+<h3>Create a New Timeline</h3>
+
 <mat-stepper [linear]=true #stepper>
     <mat-step [stepControl]="firstFormGroup">
         <form [formGroup]="firstFormGroup">
-            <ng-template matStepLabel>Fill out your name</ng-template>
-            <mat-form-field appearance="fill">
-                <mat-label>Name</mat-label>
-                <input matInput placeholder="Last name, First name" formControlName="firstCtrl" required>
-            </mat-form-field>
+            <ng-template matStepLabel>Who is this timeline for?</ng-template>
+            <mat-radio-group aria-label="Select an option">
+                <mat-radio-button value="0">An Individual</mat-radio-button>
+                <mat-radio-button value="1">An Organization</mat-radio-button>
+            </mat-radio-group>
             <div>
                 <button mat-button matStepperNext>Next</button>
             </div>

@@ -1,5 +1,6 @@
 import { Category } from "./category.model";
 import { Episode } from "./episode.model";
+import { SubjectType } from "./subject-type";
 
 export interface Timeline {
     TimelineId: string,
@@ -8,5 +9,6 @@ export interface Timeline {
     Start: Date,
     End: Date,
     Episodes: Episode[],
-    Categories: Category[]
+    Categories: Category[],
+    SubjectType: SubjectType
 }

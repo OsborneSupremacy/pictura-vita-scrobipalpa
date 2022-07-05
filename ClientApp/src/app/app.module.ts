@@ -12,7 +12,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
-import { MatStepperModule } from '@angular/material/stepper'
+import { MatStepperModule } from '@angular/material/stepper';
+import { MatRadioModule } from '@angular/material/radio';
 
 import { FormsModule } from '@angular/forms';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -44,6 +45,7 @@ import { HomeComponent } from './home/home.component';
     MatChipsModule,
     MatCardModule,
     MatStepperModule,
+    MatRadioModule,
     FormsModule,
     ReactiveFormsModule
   ],
