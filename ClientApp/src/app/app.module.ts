@@ -17,12 +17,14 @@ import { AppComponent } from './app.component';
 import { TimelineAddComponent } from './timeline-add/timeline-add.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MainMenuComponent } from './main-menu/main-menu.component';
+import { HomeComponent } from './home/home.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     TimelineAddComponent,
-    MainMenuComponent
+    MainMenuComponent,
+    HomeComponent
   ],
   imports: [
     BrowserModule,
