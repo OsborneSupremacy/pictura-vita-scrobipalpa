@@ -1,8 +1,11 @@
-<button mat-button [matMenuTriggerFor]="appMenu">Menu</button>
+<button mat-icon-button aria-label="Menu" [matMenuTriggerFor]="appMenu">
+    <mat-icon>menu</mat-icon>
+</button>
+
 <mat-menu #appMenu="matMenu">
-    <a class=" mat-menu-item"
+    <a mat-menu-item
         [routerLinkActive]="['link-active']"
         [routerLinkActiveOptions]="{ exact: true }"
-        [routerLink]="['/AddTimeline']">Create New Timeline</a>
+        [routerLink]="['/timeline/add']">Create New Timeline</a>
 </mat-menu>
 

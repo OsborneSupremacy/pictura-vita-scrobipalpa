@@ -9,7 +9,7 @@ const routes: Routes = [
         component: AppComponent
     },
     {
-        path: 'AddTimeline',
+        path: 'timeline/add',
         component: TimelineAddComponent,
     }
 ];
