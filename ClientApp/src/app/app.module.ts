@@ -12,6 +12,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
+import { MatStepperModule } from '@angular/material/stepper'
+
+import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 import { AppComponent } from './app.component';
 import { TimelineAddComponent } from './timeline-add/timeline-add.component';
@@ -38,7 +42,10 @@ import { HomeComponent } from './home/home.component';
     MatInputModule,
     MatFormFieldModule,
     MatChipsModule,
-    MatCardModule
+    MatCardModule,
+    MatStepperModule,
+    FormsModule,
+    ReactiveFormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -10,7 +10,14 @@ import { Timeline } from '../timeline.model'
 })
 export class TimelineAddComponent implements OnInit {
 
-    constructor(private router: Router
+    firstFormGroup = this.formBuilder.group({
+        firstCtrl: ['', Validators.required],
+    });
+    secondFormGroup = this.formBuilder.group({
+        secondCtrl: ['', Validators.required],
+    });
+
+    constructor(private router: Router, private formBuilder: FormBuilder
     ) { }
 
     ngOnInit(): void {
