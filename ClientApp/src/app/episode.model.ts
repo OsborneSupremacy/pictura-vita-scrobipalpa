@@ -14,5 +14,5 @@ export interface Episode {
     StartPrecision: DatePrecision,
     Start: Date,
     EndPrecision: DatePrecision,
-    End: Date
+    End: Date | null
 }

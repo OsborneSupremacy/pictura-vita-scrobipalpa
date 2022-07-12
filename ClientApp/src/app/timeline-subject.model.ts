@@ -4,7 +4,7 @@ import { SubjectType } from "./subject-type";
 
 export interface TimelineSubject {
     SubjectType: SubjectType,
-    Organizaton: Organization,
-    Person: Person,
+    Organizaton: Organization | null,
+    Person: Person | null,
     Image: string // base64-encoded image
 }

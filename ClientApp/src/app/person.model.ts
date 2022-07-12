@@ -4,7 +4,7 @@ export interface Person {
     NameParts: string[],
     TitleParts: string[],
     BirthPrecision: DatePrecision,
-    Birth: Date,
+    Birth: Date | null,
     DeathPrecision: DatePrecision,
-    Death: Date
+    Death: Date | null
 }

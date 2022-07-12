@@ -4,7 +4,7 @@ export interface Organization {
     Name: string,
     ApproximateStart: boolean,
     StartPrecision: DatePrecision,
-    Start: Date,
+    Start: Date | null,
     EndPrecision: DatePrecision,
-    End: Date
+    End: Date | null
 }

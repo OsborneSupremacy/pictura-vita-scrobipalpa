@@ -6,9 +6,9 @@ export interface Timeline {
     TimelineId: string,
     Title: string,
     Subtitle: string,
-    Start: Date,
-    End: Date,
+    Start: Date | null,
+    End: Date | null,
     Episodes: Episode[],
     Categories: Category[],
-    SubjectType: SubjectType
+    SubjectType: SubjectType | null
 }
