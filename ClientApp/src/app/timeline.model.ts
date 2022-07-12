@@ -1,5 +1,7 @@
 import { Category } from "./category.model";
 import { Episode } from "./episode.model";
+import { Organization } from "./organization.model";
+import { Person } from "./person.model";
 import { SubjectType } from "./subject-type";
 
 export interface Timeline {
@@ -10,5 +12,7 @@ export interface Timeline {
     End: Date | null,
     Episodes: Episode[],
     Categories: Category[],
-    SubjectType: SubjectType | null
+    SubjectType: SubjectType | null,
+    Organizaton: Organization | null,
+    Person: Person | null,
 }

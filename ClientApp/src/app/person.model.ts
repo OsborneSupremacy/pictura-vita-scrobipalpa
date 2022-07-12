@@ -1,8 +1,8 @@
 import { DatePrecision } from "./date-precision";
 
 export interface Person {
-    NameParts: string[],
-    TitleParts: string[],
+    Name: string,
+    Email: string,
     BirthPrecision: DatePrecision,
     Birth: Date | null,
     DeathPrecision: DatePrecision,

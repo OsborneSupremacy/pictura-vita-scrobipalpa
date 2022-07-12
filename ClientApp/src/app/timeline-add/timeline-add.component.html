@@ -2,8 +2,8 @@
 
 <mat-stepper [linear]=true #stepper>
 
-    <mat-step [stepControl]="firstFormGroup">
-        <form [formGroup]="firstFormGroup">
+    <mat-step [stepControl]="subjectFormGroup">
+        <form [formGroup]="subjectFormGroup">
             <ng-template matStepLabel>Who is this timeline for?</ng-template>
             <mat-radio-group aria-label="Select an option" formControlName="SubjectType" required>
                 <mat-radio-button value="0">A Person</mat-radio-button>
@@ -15,8 +15,68 @@
         </form>
     </mat-step>
 
-    <mat-step [stepControl]="secondFormGroup" label="Timeline Info">
-        <form [formGroup]="secondFormGroup">
+    <mat-step [stepControl]="personFormGroup" label="Person Info">
+        <form [formGroup]="personFormGroup">
+            <mat-form-field>
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="Name" placeholder="Name" required>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>Date of Birth</mat-label>
+                <input matInput [matDatepicker]="BirthDatePicker" formControlName="Birth">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="BirthDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #BirthDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>Date of Death</mat-label>
+                <input matInput [matDatepicker]="DeathDatePicker" formControlName="Death">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="DeathDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #DeathDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <div>
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+            </div>
+        </form>
+    </mat-step>
+
+    <mat-step [stepControl]="organizationFormGroup" label="Organization Info">
+        <form [formGroup]="organizationFormGroup">
+            <mat-form-field>
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="Name" placeholder="Name" required>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="OrgStartDatePicker" formControlName="Start">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="OrgStartDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #OrgStartDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="OrgEndDatePicker" formControlName="End">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="OrgEndDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #OrgEndDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <div>
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+            </div>
+        </form>
+    </mat-step>
+
+    <mat-step [stepControl]="timelineFormGroup" label="Timeline Info">
+        <form [formGroup]="timelineFormGroup">
 
             <mat-form-field>
                 <mat-label>Title</mat-label>
