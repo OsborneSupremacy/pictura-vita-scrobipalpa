@@ -25,13 +25,17 @@ import { TimelineAddComponent } from './timeline-add/timeline-add.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MainMenuComponent } from './main-menu/main-menu.component';
 import { HomeComponent } from './home/home.component';
+import { TimelineAddPersonComponent } from './timeline-add-person/timeline-add-person.component';
+import { TimelineAddOrganizationComponent } from './timeline-add-organization/timeline-add-organization.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     TimelineAddComponent,
     MainMenuComponent,
-    HomeComponent
+    HomeComponent,
+    TimelineAddPersonComponent,
+    TimelineAddOrganizationComponent
   ],
   imports: [
     BrowserModule,

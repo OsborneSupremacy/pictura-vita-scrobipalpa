@@ -1,0 +1,78 @@
+<mat-stepper [linear]=true #stepper>
+
+    <mat-step [stepControl]="personFormGroup" label="Person Info">
+        <form [formGroup]="personFormGroup">
+            <mat-form-field class="formField01" appearance="fill">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="Name" placeholder="Name" required>
+            </mat-form-field>
+
+            <mat-form-field class="formField01" appearance="fill">
+                <mat-label>Date of Birth</mat-label>
+                <input matInput [matDatepicker]="BirthDatePicker" formControlName="Birth">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="BirthDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #BirthDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field class="formField01" appearance="fill">
+                <mat-label>Date of Death</mat-label>
+                <input matInput [matDatepicker]="DeathDatePicker" formControlName="Death">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="DeathDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #DeathDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <div>
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+            </div>
+        </form>
+    </mat-step>
+
+    <mat-step [stepControl]="timelineFormGroup" label="Timeline Info">
+        <form [formGroup]="timelineFormGroup">
+
+            <mat-form-field>
+                <mat-label>Title</mat-label>
+                <input matInput formControlName="Title" placeholder="Title" required>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>Subtitle</mat-label>
+                <input matInput formControlName="Subtitle" placeholder="Subtitle">
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="StartDatePicker" formControlName="Start">
+                <mat-hint>MM/DD/YYYY (Leave Blank for Auto)</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="StartDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #StartDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field>
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="EndDatePicker" formControlName="End">
+                <mat-hint>MM/DD/YYYY (Leave Blank for Auto)</mat-hint>
+                <mat-datepicker-toggle matSuffix [for]="EndDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #EndDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <div>
+                <button mat-button matStepperPrevious>Back</button>
+                <button mat-button matStepperNext>Next</button>
+            </div>
+        </form>
+    </mat-step>
+
+    <mat-step>
+        <ng-template matStepLabel>Done</ng-template>
+        <p>You are now done.</p>
+        <div>
+            <button mat-button matStepperPrevious>Back</button>
+            <button mat-button (click)="stepper.reset()">Reset</button>
+        </div>
+    </mat-step>
+</mat-stepper>
+
