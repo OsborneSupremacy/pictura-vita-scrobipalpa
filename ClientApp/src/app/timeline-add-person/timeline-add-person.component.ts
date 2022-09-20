@@ -54,7 +54,7 @@ export class TimelineAddPersonComponent implements OnInit {
         });
 
         this.timelineFormGroup = this.formBuilder.group({
-            Title: [timeline.Title, Validators.required],
+            Title: [timeline.Title],
             Subtitle: [timeline.Subtitle],
             Start: null,
             End: null
