@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Timeline } from '../timeline.model'
 import { Person } from '../person.model';
-import { Organization } from '../organization.model';
 
 @Component({
   selector: 'app-timeline-add-person',
@@ -14,16 +13,11 @@ export class TimelineAddPersonComponent implements OnInit {
 
     public subjectFormGroup: FormGroup;
     public personFormGroup: FormGroup;
-    public organizationFormGroup: FormGroup;
     public timelineFormGroup: FormGroup;
 
     constructor(private router: Router, private formBuilder: FormBuilder) {
 
         let person = <Person>{
-            Name: ''
-        }
-
-        let organization = <Organization>{
             Name: ''
         }
 
@@ -33,8 +27,7 @@ export class TimelineAddPersonComponent implements OnInit {
             SubjectType: null,
             Start: null,
             End: null,
-            Person: person,
-            Organizaton: organization
+            Person: person
         };
 
         this.subjectFormGroup = this.formBuilder.group({
@@ -45,12 +38,6 @@ export class TimelineAddPersonComponent implements OnInit {
             Name: [timeline.Person?.Name, Validators.required],
             Birth: [timeline.Person?.Birth],
             Death: [timeline.Person?.Death]
-        });
-
-        this.organizationFormGroup = this.formBuilder.group({
-            Name: [timeline.Organizaton?.Name, Validators.required],
-            Start: [timeline.Organizaton?.Start],
-            End: [timeline.Organizaton?.End],
         });
 
         this.timelineFormGroup = this.formBuilder.group({
