@@ -2,6 +2,7 @@
 
     <mat-step [stepControl]="personFormGroup" label="Person Info">
         <form [formGroup]="personFormGroup">
+
             <mat-form-field class="formField01" appearance="fill">
                 <mat-label>Name</mat-label>
                 <input matInput formControlName="Name" placeholder="Name" required>
@@ -24,26 +25,26 @@
             </mat-form-field>
 
             <div>
-                <button mat-button matStepperPrevious>Back</button>
                 <button mat-button matStepperNext>Next</button>
             </div>
+
         </form>
     </mat-step>
 
     <mat-step [stepControl]="timelineFormGroup" label="Timeline Info">
         <form [formGroup]="timelineFormGroup">
 
-            <mat-form-field>
+            <mat-form-field class="formField01" appearance="fill">
                 <mat-label>Title</mat-label>
                 <input matInput formControlName="Title" placeholder="Title" required>
             </mat-form-field>
 
-            <mat-form-field>
+            <mat-form-field class="formField01" appearance="fill">
                 <mat-label>Subtitle</mat-label>
                 <input matInput formControlName="Subtitle" placeholder="Subtitle">
             </mat-form-field>
 
-            <mat-form-field>
+            <mat-form-field class="formField01" appearance="fill">
                 <mat-label>Start Date</mat-label>
                 <input matInput [matDatepicker]="StartDatePicker" formControlName="Start">
                 <mat-hint>MM/DD/YYYY (Leave Blank for Auto)</mat-hint>
@@ -51,7 +52,7 @@
                 <mat-datepicker #StartDatePicker></mat-datepicker>
             </mat-form-field>
 
-            <mat-form-field>
+            <mat-form-field class="formField01" appearance="fill">
                 <mat-label>End Date</mat-label>
                 <input matInput [matDatepicker]="EndDatePicker" formControlName="End">
                 <mat-hint>MM/DD/YYYY (Leave Blank for Auto)</mat-hint>
