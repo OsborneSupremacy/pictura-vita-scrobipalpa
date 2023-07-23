@@ -28,6 +28,11 @@ import { HomeComponent } from './home/home.component';
 import { TimelineAddPersonComponent } from './timeline-add-person/timeline-add-person.component';
 import { TimelineAddOrganizationComponent } from './timeline-add-organization/timeline-add-organization.component';
 import { TimelineViewComponent } from './timeline-view/timeline-view.component';
+import { TimelineAddPersonOverviewComponent } from './timeline-add-person-overview/timeline-add-person-overview.component';
+import { PersonComponent } from './person/person.component';
+import { TimelineInfoComponent } from './timeline-info/timeline-info.component';
+import { OrganizationComponent } from './organization/organization.component';
+import { TimelineAddDoneComponent } from './timeline-add-done/timeline-add-done.component';
 
 @NgModule({
   declarations: [
@@ -37,7 +42,12 @@ import { TimelineViewComponent } from './timeline-view/timeline-view.component';
     HomeComponent,
     TimelineAddPersonComponent,
     TimelineAddOrganizationComponent,
-    TimelineViewComponent
+    TimelineViewComponent,
+    TimelineAddPersonOverviewComponent,
+    PersonComponent,
+    TimelineInfoComponent,
+    OrganizationComponent,
+    TimelineAddDoneComponent
   ],
   imports: [
     BrowserModule,

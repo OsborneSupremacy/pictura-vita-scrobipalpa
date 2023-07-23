@@ -17,6 +17,10 @@ export class TimelineAddPersonComponent implements OnInit {
 
     constructor(private router: Router, private formBuilder: FormBuilder) {
 
+        this.form = this.formBuilder.group({
+            name: ['', Validators.required]
+        });
+
         let person = <Person>{
             Name: ''
         }
