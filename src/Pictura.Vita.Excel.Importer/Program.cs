@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using dotenv.net;
+using Pictura.Vita.Domain;
 using Pictura.Vita.Excel.Importer.Services;
 using Spectre.Console;
 
@@ -30,7 +31,9 @@ var options = new JsonSerializerOptions
     Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
 };
 
-var timelineJson = JsonSerializer.Serialize(timeline, options);
+List<Timeline> timelines = [ timeline];
+
+var timelinesJson = JsonSerializer.Serialize(timelines, options);
 
 // write to file in temp directory
 var tempFile = Path.Combine(Path.GetTempPath(), $"{Environment.UserName}-timeline.json");
@@ -39,7 +42,7 @@ var tempFile = Path.Combine(Path.GetTempPath(), $"{Environment.UserName}-timelin
 if (File.Exists(tempFile))
     File.Delete(tempFile);
 
-File.WriteAllText(tempFile, timelineJson);
+File.WriteAllText(tempFile, timelinesJson);
 
 AnsiConsole.MarkupLine("Timeline JSON written to [green]{0}[/]", tempFile);
 
