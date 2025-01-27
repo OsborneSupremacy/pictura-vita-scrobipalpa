@@ -1,4 +1,4 @@
-namespace Picture.Vita.Domain;
+namespace Pictura.Vita.Domain;
 
 public enum Confidentiality
 {

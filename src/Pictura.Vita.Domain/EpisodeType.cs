@@ -1,4 +1,4 @@
-namespace Picture.Vita.Domain;
+namespace Pictura.Vita.Domain;
 
 public enum EpisodeType
 {
@@ -9,5 +9,5 @@ public enum EpisodeType
     /// <summary>
     /// Duration is more than one day 1 day
     /// </summary>
-    Period
+    Era
 }

@@ -13,4 +13,16 @@
       <PackageReference Include="Spectre.Console" Version="0.49.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove=".env" />
+      <Content Include=".env">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Pictura.Vita.Utility\Pictura.Vita.Utility.csproj" />
+      <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
+    </ItemGroup>
+
 </Project>

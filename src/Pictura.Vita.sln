@@ -1,12 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Picture.Vita.Domain", "Picture.Vita.Domain\Picture.Vita.Domain.csproj", "{E0FC2616-D88A-4D27-B1BD-9C5E6C7F1AAA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Domain", "Pictura.Vita.Domain\Pictura.Vita.Domain.csproj", "{E0FC2616-D88A-4D27-B1BD-9C5E6C7F1AAA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Api", "Pictura.Vita.Api\Pictura.Vita.Api.csproj", "{525A8D5E-A95F-47A7-9347-E3380372D22C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Data", "Pictura.Vita.Data\Pictura.Vita.Data.csproj", "{0E7D3F95-89F1-43D1-B555-7E1DA318C344}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Excel.Importer", "Pictura.Vita.Excel.Importer\Pictura.Vita.Excel.Importer.csproj", "{30A07307-8D3F-4E91-9D6E-D03D27226703}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Utility", "Pictura.Vita.Utility\Pictura.Vita.Utility.csproj", "{4742DAA1-3B66-4A68-9305-C10C4F471037}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +32,9 @@ Global
 		{30A07307-8D3F-4E91-9D6E-D03D27226703}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30A07307-8D3F-4E91-9D6E-D03D27226703}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30A07307-8D3F-4E91-9D6E-D03D27226703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4742DAA1-3B66-4A68-9305-C10C4F471037}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4742DAA1-3B66-4A68-9305-C10C4F471037}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4742DAA1-3B66-4A68-9305-C10C4F471037}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4742DAA1-3B66-4A68-9305-C10C4F471037}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
