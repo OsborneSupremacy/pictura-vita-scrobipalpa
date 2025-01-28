@@ -28,9 +28,13 @@ app.UseHttpsRedirection();
 
 var timelineProvider = new TimelineProvider();
 
+// timeline endpoints
+
 app.MapGet("/timelines", () => timelineProvider.GetAllAsync());
 
 app.MapGet("/timeline/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetAsync(id));
+
+// category endpoints
 
 app.MapGet("/categories/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetCategoriesAsync(id));
 
@@ -38,8 +42,18 @@ app.MapGet("/category/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetCa
 
 app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
 {
-    await timelineProvider.InsertCategoryAsync(request);
-    return Results.CreatedAtRoute($"/categories/{request.Category.CategoryId}");
+    var newCategory = await timelineProvider.InsertCategoryAsync(request);
+    return Results.CreatedAtRoute($"/categories/{newCategory.CategoryId}");
+});
+
+// episode endpoints
+
+app.MapGet("/episodes/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetEpisodeAsync(id));
+
+app.MapPost("/episode", async ([FromBody]InsertEpisodeRequest request) =>
+{
+    var newEpisode = await timelineProvider.InsertEpisodeAsync(request);
+    return Results.CreatedAtRoute($"/episodes/{newEpisode.EpisodeId}");
 });
 
 app.Run();

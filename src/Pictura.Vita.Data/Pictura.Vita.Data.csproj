@@ -13,6 +13,7 @@
     <ItemGroup>
       <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Messaging\Pictura.Vita.Messaging.csproj" />
+      <ProjectReference Include="..\Pictura.Vita.Utility\Pictura.Vita.Utility.csproj" />
     </ItemGroup>
 
 </Project>
