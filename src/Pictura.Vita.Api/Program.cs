@@ -1,4 +1,5 @@
 using dotenv.net;
+using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 
 DotEnv.Load();
@@ -29,13 +30,13 @@ var timelineProvider = new TimelineProvider();
 
 app.MapGet("/timelines", () => timelineProvider.GetAllAsync());
 
-app.MapGet("/timelines/{id}", (Guid id) => timelineProvider.GetAsync(id));
+app.MapGet("/timeline/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetAsync(id));
 
-app.MapGet("/categories/{id}", (Guid id) => timelineProvider.GetCategoriesAsync(id));
+app.MapGet("/categories/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetCategoriesAsync(id));
 
-app.MapGet("/category/{id}", (Guid id) => timelineProvider.GetCategoryAsync(id));
+app.MapGet("/category/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetCategoryAsync(id));
 
-app.MapPost("/category", async (InsertCategoryRequest request) =>
+app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
 {
     await timelineProvider.InsertCategoryAsync(request);
     return Results.CreatedAtRoute($"/categories/{request.Category.CategoryId}");
