@@ -1,6 +1,7 @@
 using JsonFlatFileDataStore;
 using Pictura.Vita.Domain;
 using Pictura.Vita.Messaging;
+using Pictura.Vita.Utility;
 using Pictura.Vita.Utility.Extensions;
 
 namespace Pictura.Vita.Data.Providers;
@@ -21,30 +22,57 @@ public class TimelineProvider
         return Task.FromResult(timelines);
     }
 
-    public async Task<Timeline> GetAsync(Guid timelineId) =>
-        (await GetAllAsync())
-            .Single(x => x.TimelineId == timelineId);
+    public async Task<Result<Timeline>> GetAsync(Guid timelineId)
+    {
+        var timeline = (await GetAllAsync())
+            .SingleOrDefault(x => x.TimelineId == timelineId);
+
+        return timeline is null
+            ? new Result<Timeline>(new KeyNotFoundException())
+            : new Result<Timeline>(timeline);
+    }
 
     public async Task InsertAsync(Timeline timeline) =>
         await _collection.InsertOneAsync(timeline);
 
-    public async Task<IEnumerable<Category>> GetCategoriesAsync(Guid timelineId) =>
-        (await GetAsync(timelineId))
-            .Categories;
+    public async Task<Result<IEnumerable<Category>>> GetCategoriesAsync(Guid timelineId)
+    {
+        var timeline = await GetAsync(timelineId);
+        return timeline.IsSuccess switch
+        {
+            false => new Result<IEnumerable<Category>>(timeline.Exception),
+            _ => new Result<IEnumerable<Category>>(timeline.Value.Categories.AsEnumerable())
+        };
+    }
 
-    public async Task<Category> GetCategoryAsync(Guid categoryId) =>
-        (await GetAllAsync())
+    public async Task<Result<Category>> GetCategoryAsync(Guid categoryId)
+    {
+        var category = (await GetAllAsync())
             .SelectMany(x => x.Categories)
-            .Single(x => x.CategoryId == categoryId);
+            .SingleOrDefault(x => x.CategoryId == categoryId);
 
-    public async Task<Episode> GetEpisodeAsync(Guid episodeId) =>
-        (await GetAllAsync())
+        return category is null
+            ? new Result<Category>(new KeyNotFoundException($"Category with id {categoryId} not found"))
+            : new Result<Category>(category);
+    }
+
+    public async Task<Result<Episode>> GetEpisodeAsync(Guid episodeId)
+    {
+        var episode = (await GetAllAsync())
             .SelectMany(x => x.Episodes)
-            .Single(x => x.EpisodeId == episodeId);
+            .SingleOrDefault(x => x.EpisodeId == episodeId);
 
-    public async Task<Category> InsertCategoryAsync(InsertCategoryRequest request)
+        return episode is null
+            ? new Result<Episode>(new KeyNotFoundException($"Episode with id {episodeId} not found"))
+            : new Result<Episode>(episode);
+    }
+
+    public async Task<Result<Category>> InsertCategoryAsync(InsertCategoryRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
+
+        if(!timeline.IsSuccess)
+            return new Result<Category>(timeline.Exception);
 
         var newCategory = new Category
         {
@@ -54,21 +82,24 @@ public class TimelineProvider
             Subtitle = request.Subtitle
         };
 
-        timeline.Categories.Add(newCategory);
+        timeline.Value.Categories.Add(newCategory);
         await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
-        return newCategory;
+        return new Result<Category>(newCategory);
     }
 
-    public async Task UpdateCategoryAsync(UpdateCategoryRequest request)
+    public async Task<Result<bool>> UpdateCategoryAsync(UpdateCategoryRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
 
-        var category = timeline.Categories
+        if(!timeline.IsSuccess)
+            return new Result<bool>(timeline.Exception);
+
+        var category = timeline.Value.Categories
             .Single(x => x.CategoryId == request.Category.CategoryId);
 
-        timeline.Categories.Remove(category);
+        timeline.Value.Categories.Remove(category);
 
-        timeline.Categories.Add(category with
+        timeline.Value.Categories.Add(category with
         {
             Confidentiality = request.Category.Confidentiality,
             Title = request.Category.Title,
@@ -76,11 +107,15 @@ public class TimelineProvider
         });
 
         await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        return new Result<bool>(true);
     }
 
-    public async Task<Episode> InsertEpisodeAsync(InsertEpisodeRequest request)
+    public async Task<Result<Episode>> InsertEpisodeAsync(InsertEpisodeRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
+
+        if(!timeline.IsSuccess)
+            return new Result<Episode>(timeline.Exception);
 
         var newEpisode = new Episode
         {
@@ -100,19 +135,22 @@ public class TimelineProvider
             CategoryIds = request.CategoryIds
         };
 
-        timeline.Episodes.Add(newEpisode);
+        timeline.Value.Episodes.Add(newEpisode);
         await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
         return newEpisode;
     }
 
-    public async Task UpdateEpisodeAsync(UpdateEpisodeRequest request)
+    public async Task<Result<bool>> UpdateEpisodeAsync(UpdateEpisodeRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
 
-        var episode = timeline.Episodes
+        if(!timeline.IsSuccess)
+            return new Result<bool>(timeline.Exception);
+
+        var episode = timeline.Value.Episodes
             .Single(x => x.EpisodeId == request.Episode.EpisodeId);
 
-        timeline.Episodes.Remove(episode);
+        timeline.Value.Episodes.Remove(episode);
 
         var updatedEpisode = episode with
         {
@@ -131,9 +169,10 @@ public class TimelineProvider
             CategoryIds = request.Episode.CategoryIds
         };
 
-        timeline.Episodes.Add(updatedEpisode);
+        timeline.Value.Episodes.Add(updatedEpisode);
 
         await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        return new Result<bool>(true);
     }
 }
 
