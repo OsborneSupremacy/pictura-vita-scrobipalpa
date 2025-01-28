@@ -30,4 +30,6 @@ public record Episode
     /// Duration in days
     /// </summary>
     public required int Duration { get; init; }
+
+    public required IList<Guid> CategoryIds { get; init; }
 }

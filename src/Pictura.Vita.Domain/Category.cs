@@ -8,7 +8,5 @@ public record Category
 
     public required string Subtitle { get; init; }
 
-    public required IList<Guid> EpisodeIds { get; init; }
-
     public required Confidentiality Confidentiality { get; init; }
 }

@@ -20,10 +20,6 @@ internal static class TransformerService
                 CategoryId = Guid.CreateVersion7(),
                 Title = g,
                 Subtitle = string.Empty,
-                EpisodeIds = occurrences
-                    .Where(o => o.Value.Group == g)
-                    .Select(o => o.Key)
-                    .ToList(),
                 Confidentiality = Confidentiality.OnlyMe
             })
             .ToList();
@@ -43,7 +39,11 @@ internal static class TransformerService
                 EndPrecision = DatePrecision.Exact,
                 End = o.Value.EndDate,
                 Duration = o.Value.EndDate.Difference(o.Value.StartDate).Days,
-                Confidentiality = Confidentiality.OnlyMe
+                Confidentiality = Confidentiality.OnlyMe,
+                CategoryIds = categories
+                    .Where(c => c.Title == o.Value.Group)
+                    .Select(c => c.CategoryId)
+                    .ToList()
             })
             .ToList();
 

@@ -1,5 +1,4 @@
 using dotenv.net;
-using Pictura.Vita.Data.Providers;
 using Scalar.AspNetCore;
 
 DotEnv.Load();
@@ -28,9 +27,19 @@ app.UseHttpsRedirection();
 
 var timelineProvider = new TimelineProvider();
 
-app.MapGet("/timelines", () => timelineProvider.GetAll());
+app.MapGet("/timelines", () => timelineProvider.GetAllAsync());
 
-app.MapGet("/timelines/{id}", (Guid id) => timelineProvider.Get(id));
+app.MapGet("/timelines/{id}", (Guid id) => timelineProvider.GetAsync(id));
+
+app.MapGet("/categories/{id}", (Guid id) => timelineProvider.GetCategoriesAsync(id));
+
+app.MapGet("/category/{id}", (Guid id) => timelineProvider.GetCategoryAsync(id));
+
+app.MapPost("/category", async (InsertCategoryRequest request) =>
+{
+    await timelineProvider.InsertCategoryAsync(request);
+    return Results.CreatedAtRoute($"/categories/{request.Category.CategoryId}");
+});
 
 app.Run();
 

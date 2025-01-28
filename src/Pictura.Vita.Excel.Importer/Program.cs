@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using dotenv.net;
+﻿using dotenv.net;
 using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Excel.Importer.Services;
 using Spectre.Console;
@@ -8,6 +6,7 @@ using Spectre.Console;
 DotEnv.Load();
 
 var sourceFile = Environment.GetEnvironmentVariable("SOURCE_EXCEL_FILE_PATH");
+var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
 
 if (!File.Exists(sourceFile))
 {
@@ -25,5 +24,7 @@ var timeline = TransformerService.Transform(occurrences);
 
 var timelineProvider = new TimelineProvider();
 timelineProvider.InsertAsync(timeline).GetAwaiter().GetResult();
+
+AnsiConsole.MarkupLine($"Timeline inserted to {dataFilePath} successfully");
 
 Environment.Exit(0);
