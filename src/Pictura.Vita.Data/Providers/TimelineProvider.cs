@@ -59,6 +59,25 @@ public class TimelineProvider
         return newCategory;
     }
 
+    public async Task UpdateCategoryAsync(UpdateCategoryRequest request)
+    {
+        var timeline = await GetAsync(request.TimelineId);
+
+        var category = timeline.Categories
+            .Single(x => x.CategoryId == request.Category.CategoryId);
+
+        timeline.Categories.Remove(category);
+
+        timeline.Categories.Add(category with
+        {
+            Confidentiality = request.Category.Confidentiality,
+            Title = request.Category.Title,
+            Subtitle = request.Category.Subtitle
+        });
+
+        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+    }
+
     public async Task<Episode> InsertEpisodeAsync(InsertEpisodeRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
@@ -86,8 +105,36 @@ public class TimelineProvider
         return newEpisode;
     }
 
+    public async Task UpdateEpisodeAsync(UpdateEpisodeRequest request)
+    {
+        var timeline = await GetAsync(request.TimelineId);
 
+        var episode = timeline.Episodes
+            .Single(x => x.EpisodeId == request.Episode.EpisodeId);
 
+        timeline.Episodes.Remove(episode);
+
+        var updatedEpisode = episode with
+        {
+            Confidentiality = request.Episode.Confidentiality,
+            Title = request.Episode.Title,
+            Subtitle = request.Episode.Subtitle,
+            Description = request.Episode.Description,
+            Url = request.Episode.Url,
+            UrlDescription = request.Episode.UrlDescription,
+            EpisodeType = request.Episode.EpisodeType,
+            StartPrecision = request.Episode.StartPrecision,
+            Start = request.Episode.Start,
+            EndPrecision = request.Episode.EndPrecision,
+            End = request.Episode.End,
+            Duration = request.Episode.End.Difference(request.Episode.Start).Days,
+            CategoryIds = request.Episode.CategoryIds
+        };
+
+        timeline.Episodes.Add(updatedEpisode);
+
+        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+    }
 }
 
 

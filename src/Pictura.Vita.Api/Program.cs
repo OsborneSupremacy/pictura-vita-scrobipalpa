@@ -46,6 +46,12 @@ app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
     return Results.CreatedAtRoute($"/categories/{newCategory.CategoryId}");
 });
 
+app.MapPut("/category", async ([FromBody]UpdateCategoryRequest request) =>
+{
+    await timelineProvider.UpdateCategoryAsync(request);
+    return Results.NoContent();
+});
+
 // episode endpoints
 
 app.MapGet("/episodes/{id:guid}", ([FromRoute]Guid id) => timelineProvider.GetEpisodeAsync(id));
@@ -54,6 +60,12 @@ app.MapPost("/episode", async ([FromBody]InsertEpisodeRequest request) =>
 {
     var newEpisode = await timelineProvider.InsertEpisodeAsync(request);
     return Results.CreatedAtRoute($"/episodes/{newEpisode.EpisodeId}");
+});
+
+app.MapPut("/episode", async ([FromBody]UpdateEpisodeRequest request) =>
+{
+    await timelineProvider.UpdateEpisodeAsync(request);
+    return Results.NoContent();
 });
 
 app.Run();
