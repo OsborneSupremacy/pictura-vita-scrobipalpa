@@ -1,20 +1,23 @@
 using JsonFlatFileDataStore;
 using Pictura.Vita.Domain;
 
-namespace Pictura.Vita.Api.Providers;
+namespace Pictura.Vita.Data.Providers;
 
-internal class TimelineProvider
+public class TimelineProvider
 {
     private readonly IDocumentCollection<Timeline> _collection;
 
-    public TimelineProvider(IDocumentCollection<Timeline> collection)
+    public TimelineProvider()
     {
         var store = new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH"));
         _collection = store.GetCollection<Timeline>();
     }
 
-    public IEnumerable<Timeline> GetAllAsync() =>
+    public IEnumerable<Timeline> GetAll() =>
         _collection.AsQueryable();
+
+    public async Task InsertAsync(Timeline timeline) =>
+        await _collection.InsertOneAsync(timeline);
 
 
 
