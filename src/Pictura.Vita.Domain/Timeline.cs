@@ -2,6 +2,8 @@ namespace Pictura.Vita.Domain;
 
 public record Timeline
 {
+    public required Guid TimelineId { get; init; }
+
     public required string Title { get; set; }
 
     public required string Subtitle { get; set; }

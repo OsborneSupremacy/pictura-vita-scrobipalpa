@@ -16,10 +16,10 @@ public class TimelineProvider
     public IEnumerable<Timeline> GetAll() =>
         _collection.AsQueryable();
 
-    public Timeline? Get(string title) =>
+    public Timeline? Get(Guid timelineId) =>
         _collection
             .AsQueryable()
-            .SingleOrDefault(x => x.Title == title);
+            .SingleOrDefault(x => x.TimelineId == timelineId);
 
     public async Task InsertAsync(Timeline timeline) =>
         await _collection.InsertOneAsync(timeline);

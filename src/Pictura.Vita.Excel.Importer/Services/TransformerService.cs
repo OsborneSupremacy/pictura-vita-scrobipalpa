@@ -49,6 +49,7 @@ internal static class TransformerService
 
         var timeLine = new Timeline
         {
+            TimelineId = Guid.CreateVersion7(),
             Title = $"{username}'s Timeline",
             Subtitle = $"Imported on {DateTime.Now}",
             TimelineSubject = new TimelineSubject

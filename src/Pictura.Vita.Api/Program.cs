@@ -30,7 +30,7 @@ var timelineProvider = new TimelineProvider();
 
 app.MapGet("/timelines", () => timelineProvider.GetAll());
 
-app.MapGet("/timelines/{title}", (string title) => timelineProvider.Get(title));
+app.MapGet("/timelines/{id}", (Guid id) => timelineProvider.Get(id));
 
 app.Run();
 
