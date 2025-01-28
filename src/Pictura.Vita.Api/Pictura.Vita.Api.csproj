@@ -7,12 +7,21 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="dotenv.net" Version="3.2.1" />
+        <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1"/>
         <PackageReference Include="Scalar.AspNetCore" Version="2.0.4" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove=".env" />
+      <Content Include=".env">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
 </Project>

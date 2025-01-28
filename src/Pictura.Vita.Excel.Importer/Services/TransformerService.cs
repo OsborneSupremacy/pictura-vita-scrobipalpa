@@ -12,35 +12,39 @@ internal static class TransformerService
 
         var username = Environment.UserName;
 
-        var categories = occurrences.Values.Select(o => o.Group).Distinct().Select(g => new Category
-        {
-            CategoryId = Guid.CreateVersion7(),
-            Title = g,
-            Subtitle = string.Empty,
-            EpisodeIds = occurrences
-                .Where(o => o.Value.Group == g)
-                .Select(o => o.Key)
-                .ToList(),
-            Confidentiality = Confidentiality.OnlyMe
-        })
+        var categories = occurrences.Values
+            .Select(o => o.Group)
+            .Distinct()
+            .Select(g => new Category
+            {
+                CategoryId = Guid.CreateVersion7(),
+                Title = g,
+                Subtitle = string.Empty,
+                EpisodeIds = occurrences
+                    .Where(o => o.Value.Group == g)
+                    .Select(o => o.Key)
+                    .ToList(),
+                Confidentiality = Confidentiality.OnlyMe
+            })
             .ToList();
 
-        var episodes = occurrences.Select(o => new Episode
-        {
-            EpisodeId = o.Key,
-            Title = o.Value.Headline,
-            Subtitle = o.Value.Description1,
-            Description = o.Value.Description2,
-            Url = o.Value.Url,
-            UrlDescription = o.Value.UrlDescription,
-            EpisodeType = o.Value.StartDate.Equals(o.Value.EndDate) ? EpisodeType.Incident : EpisodeType.Era,
-            Start = o.Value.StartDate,
-            StartPrecision = DatePrecision.Exact,
-            EndPrecision = DatePrecision.Exact,
-            End = o.Value.EndDate,
-            Duration = o.Value.EndDate.Difference(o.Value.StartDate).Days,
-            Confidentiality = Confidentiality.OnlyMe
-        })
+        var episodes = occurrences
+            .Select(o => new Episode
+            {
+                EpisodeId = o.Key,
+                Title = o.Value.Headline,
+                Subtitle = o.Value.Description1,
+                Description = o.Value.Description2,
+                Url = o.Value.Url,
+                UrlDescription = o.Value.UrlDescription,
+                EpisodeType = o.Value.StartDate.Equals(o.Value.EndDate) ? EpisodeType.Incident : EpisodeType.Era,
+                Start = o.Value.StartDate,
+                StartPrecision = DatePrecision.Exact,
+                EndPrecision = DatePrecision.Exact,
+                End = o.Value.EndDate,
+                Duration = o.Value.EndDate.Difference(o.Value.StartDate).Days,
+                Confidentiality = Confidentiality.OnlyMe
+            })
             .ToList();
 
         var timeLine = new Timeline
