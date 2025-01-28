@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using dotenv.net;
-using Pictura.Vita.Domain;
+using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Excel.Importer.Services;
 using Spectre.Console;
 
@@ -23,27 +23,7 @@ AnsiConsole.MarkupLine("Found [green]{0}[/] occurrences", occurrences.Count);
 
 var timeline = TransformerService.Transform(occurrences);
 
-// serialize timeline to json
-
-var options = new JsonSerializerOptions
-{
-    WriteIndented = true,
-    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-};
-
-List<Timeline> timelines = [ timeline];
-
-var timelinesJson = JsonSerializer.Serialize(timelines, options);
-
-// write to file in temp directory
-var tempFile = Path.Combine(Path.GetTempPath(), $"{Environment.UserName}-timeline.json");
-
-// delete if exists
-if (File.Exists(tempFile))
-    File.Delete(tempFile);
-
-File.WriteAllText(tempFile, timelinesJson);
-
-AnsiConsole.MarkupLine("Timeline JSON written to [green]{0}[/]", tempFile);
+var timelineProvider = new TimelineProvider();
+timelineProvider.InsertAsync(timeline).GetAwaiter().GetResult();
 
 Environment.Exit(0);

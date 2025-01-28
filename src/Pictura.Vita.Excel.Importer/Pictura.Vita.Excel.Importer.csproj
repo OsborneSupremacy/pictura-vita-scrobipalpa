@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Pictura.Vita.Data\Pictura.Vita.Data.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Utility\Pictura.Vita.Utility.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
     </ItemGroup>
