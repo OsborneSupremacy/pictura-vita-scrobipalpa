@@ -130,7 +130,7 @@ public class TimelineProvider
             Description = request.Description,
             Url = request.Url,
             UrlDescription = request.UrlDescription,
-            EpisodeType = request.EpisodeType,
+            EpisodeType = request.Start.Equals(request.End) ? EpisodeType.Incident : EpisodeType.Era,
             StartPrecision = request.StartPrecision,
             Start = request.Start,
             EndPrecision = request.EndPrecision,

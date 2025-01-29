@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="dotenv.net" Version="3.2.1" />
+        <PackageReference Include="FluentValidation" Version="11.11.0" />
         <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1"/>
         <PackageReference Include="Scalar.AspNetCore" Version="2.0.4" />

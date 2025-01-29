@@ -16,8 +16,6 @@ public record InsertEpisodeRequest
 
     public required string UrlDescription { get; init; }
 
-    public required EpisodeType EpisodeType { get; init; }
-
     public required DatePrecision StartPrecision { get; init; }
 
     public required DateOnly Start { get; init; }
