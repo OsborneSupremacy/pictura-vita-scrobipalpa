@@ -61,7 +61,6 @@ internal static class TransformerService
                     Birth = startDate,
                     Death = DateOnly.MaxValue,
                     NameParts = [ username ],
-                    TitleParts = [],
                     BirthPrecision = DatePrecision.Exact,
                     DeathPrecision = DatePrecision.Exact,
                     ObfuscateDates = false
