@@ -28,7 +28,7 @@ public class TimelineProvider
             .SingleOrDefault(x => x.TimelineId == timelineId);
 
         return timeline is null
-            ? new Result<Timeline>(new KeyNotFoundException())
+            ? new Result<Timeline>(new KeyNotFoundException($"Timeline with id {timelineId} not found"))
             : new Result<Timeline>(timeline);
     }
 
@@ -83,7 +83,8 @@ public class TimelineProvider
         };
 
         timeline.Value.Categories.Add(newCategory);
-        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        await _collection
+            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
         return new Result<Category>(newCategory);
     }
 
@@ -94,19 +95,22 @@ public class TimelineProvider
         if(!timeline.IsSuccess)
             return new Result<bool>(timeline.Exception);
 
-        var category = timeline.Value.Categories
-            .Single(x => x.CategoryId == request.Category.CategoryId);
+        var category = await GetCategoryAsync(request.Category.CategoryId);
 
-        timeline.Value.Categories.Remove(category);
+        if(!category.IsSuccess)
+            return new Result<bool>(category.Exception);
 
-        timeline.Value.Categories.Add(category with
+        timeline.Value.Categories.Remove(category.Value);
+
+        timeline.Value.Categories.Add(category.Value with
         {
             Confidentiality = request.Category.Confidentiality,
             Title = request.Category.Title,
             Subtitle = request.Category.Subtitle
         });
 
-        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        await _collection
+            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
         return new Result<bool>(true);
     }
 
@@ -147,12 +151,11 @@ public class TimelineProvider
         if(!timeline.IsSuccess)
             return new Result<bool>(timeline.Exception);
 
-        var episode = timeline.Value.Episodes
-            .Single(x => x.EpisodeId == request.Episode.EpisodeId);
+        var episode = await GetEpisodeAsync(request.Episode.EpisodeId);
 
-        timeline.Value.Episodes.Remove(episode);
+        timeline.Value.Episodes.Remove(episode.Value);
 
-        var updatedEpisode = episode with
+        var updatedEpisode = episode.Value with
         {
             Confidentiality = request.Episode.Confidentiality,
             Title = request.Episode.Title,
@@ -171,7 +174,8 @@ public class TimelineProvider
 
         timeline.Value.Episodes.Add(updatedEpisode);
 
-        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        await _collection
+            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
         return new Result<bool>(true);
     }
 }

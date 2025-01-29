@@ -1,6 +1,6 @@
-@Pictura.Vita.Api_HostAddress = http://localhost:5272
+@HostAddress = https://localhost:7105
 
-GET {{Pictura.Vita.Api_HostAddress}}/weatherforecast/
+GET {{HostAddress}}/timelines
 Accept: application/json
 
 ###

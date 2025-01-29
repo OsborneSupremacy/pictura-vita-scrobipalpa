@@ -33,33 +33,33 @@ var timelineProvider = new TimelineProvider();
 app.MapGet("/timelines", async () => await timelineProvider.GetAllAsync())
     .WithDisplayName("Get all timelines")
     .WithOpenApi()
-    .Produces(StatusCodes.Status200OK);
+    .Produces<IEnumerable<Timeline>>();
 
 app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
     {
         var timeline = await timelineProvider.GetAsync(id);
         return timeline is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.Ok(timelineProvider.GetAsync(id));
+            : Results.Ok(timeline.Value);
     })
     .WithDisplayName("Get a timeline by ID")
     .WithOpenApi()
-    .Produces(StatusCodes.Status200OK)
+    .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
 
 // category endpoints
 
 app.MapGet("/categories/{id:guid}", async ([FromRoute]Guid id) =>
     {
-        var timeline = await timelineProvider.GetAsync(id);
+        var categories = await timelineProvider.GetCategoriesAsync(id);
 
-        return timeline is { IsFaulted: true, Exception: KeyNotFoundException }
+        return categories is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.Ok(await timelineProvider.GetCategoriesAsync(id));
+            : Results.Ok(categories.Value);
     })
     .WithDisplayName("Get all categories for a timeline")
     .WithOpenApi()
-    .Produces(StatusCodes.Status200OK)
+    .Produces<IEnumerable<Category>>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapGet("/category/{id:guid}", async ([FromRoute]Guid id) =>
@@ -68,11 +68,11 @@ app.MapGet("/category/{id:guid}", async ([FromRoute]Guid id) =>
 
         return category is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.Ok(category);
+            : Results.Ok(category.Value);
     })
     .WithDisplayName("Get a category by ID")
     .WithOpenApi()
-    .Produces(StatusCodes.Status200OK)
+    .Produces<Category>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
@@ -109,11 +109,11 @@ app.MapGet("/episodes/{id:guid}", async ([FromRoute]Guid id) =>
 
         return episode is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.Ok(episode);
+            : Results.Ok(episode.Value);
     })
     .WithDisplayName("Get an episode by ID")
     .WithOpenApi()
-    .Produces(StatusCodes.Status200OK)
+    .Produces<Episode>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapPost("/episode", async ([FromBody]InsertEpisodeRequest request) =>
