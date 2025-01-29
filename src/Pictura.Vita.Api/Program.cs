@@ -1,5 +1,6 @@
 using dotenv.net;
 using Microsoft.AspNetCore.Mvc;
+using Pictura.Vita.Api.Validators;
 using Scalar.AspNetCore;
 
 DotEnv.Load();
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>();
 
 var app = builder.Build();
 
@@ -75,8 +77,16 @@ app.MapGet("/category/{id:guid}", async ([FromRoute]Guid id) =>
     .Produces<Category>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
+app.MapPost("/category", async (
+        [FromServices]InsertCategoryRequestValidator validator,
+        [FromBody]InsertCategoryRequest request
+        ) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+
+        if (!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
         var newCategory = await timelineProvider.InsertCategoryAsync(request);
 
         return newCategory is { IsFaulted: true, Exception: KeyNotFoundException }
@@ -86,10 +96,18 @@ app.MapPost("/category", async ([FromBody]InsertCategoryRequest request) =>
     .WithDisplayName("Create a new category")
     .WithOpenApi()
     .Produces(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPut("/category", async ([FromBody]UpdateCategoryRequest request) =>
+app.MapPut("/category", async (
+        [FromServices]UpdateCategoryRequestValidator validator,
+        [FromBody]UpdateCategoryRequest request
+        ) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if(!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
         var updateResult = await timelineProvider.UpdateCategoryAsync(request);
 
         return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
@@ -99,6 +117,7 @@ app.MapPut("/category", async ([FromBody]UpdateCategoryRequest request) =>
     .WithDisplayName("Update a category")
     .WithOpenApi()
     .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
 // episode endpoints
@@ -116,8 +135,15 @@ app.MapGet("/episodes/{id:guid}", async ([FromRoute]Guid id) =>
     .Produces<Episode>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/episode", async ([FromBody]InsertEpisodeRequest request) =>
+app.MapPost("/episode", async (
+        [FromServices]InsertEpisodeRequestValidator validator,
+        [FromBody]InsertEpisodeRequest request
+        ) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if(!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
         var newEpisode = await timelineProvider.InsertEpisodeAsync(request);
 
         return newEpisode is { IsFaulted: true, Exception: KeyNotFoundException }
@@ -127,10 +153,18 @@ app.MapPost("/episode", async ([FromBody]InsertEpisodeRequest request) =>
     .WithDisplayName("Create a new episode")
     .WithOpenApi()
     .Produces(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPut("/episode", async ([FromBody]UpdateEpisodeRequest request) =>
+app.MapPut("/episode", async (
+        [FromServices]UpdateEpisodeRequestValidator validator,
+        [FromBody]UpdateEpisodeRequest request
+        ) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if(!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
         var updateResult = await timelineProvider.UpdateEpisodeAsync(request);
 
         return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
