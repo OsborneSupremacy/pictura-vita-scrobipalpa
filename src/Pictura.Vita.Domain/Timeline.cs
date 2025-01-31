@@ -4,17 +4,9 @@ public record Timeline
 {
     public required Guid TimelineId { get; init; }
 
-    public required string Title { get; set; }
+    public required TimelineInfo TimelineInfo { get; init; }
 
-    public required string Subtitle { get; set; }
+    public required IList<Episode> Episodes { get; init; }
 
-    public required TimelineSubject TimelineSubject { get; set; }
-
-    public required DateOnly Start { get; set; }
-
-    public required DateOnly End { get; set; }
-
-    public required IList<Episode> Episodes { get; set; }
-
-    public required IList<Category> Categories { get; set; }
+    public required IList<Category> Categories { get; init; }
 }

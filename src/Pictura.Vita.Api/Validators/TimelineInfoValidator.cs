@@ -1,8 +1,8 @@
 namespace Pictura.Vita.Api.Validators;
 
-internal class TimelineValidator : AbstractValidator<Timeline>
+internal class TimelineInfoValidator : AbstractValidator<TimelineInfo>
 {
-    public TimelineValidator()
+    public TimelineInfoValidator()
     {
         RuleFor(x => x.Title).NotEmpty();
         RuleFor(x => x.Subtitle).NotNull();

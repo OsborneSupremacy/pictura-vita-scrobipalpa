@@ -49,6 +49,29 @@ app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
     .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
 
+app.MapPost("/timeline", async (
+        [FromServices]TimelineInfoValidator validator,
+        [FromBody]Timeline request
+        ) =>
+    {
+        var validationResult = await validator
+            .ValidateAsync(request.TimelineInfo);
+
+        if (!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
+        var updateResult = await timelineProvider.UpdateTimelineInfoAsync(request);
+
+        return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
+            ? Results.NotFound()
+            : Results.NoContent();
+    })
+    .WithDisplayName("Update a timeline's information")
+    .WithOpenApi()
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
 // category endpoints
 
 app.MapGet("/categories/{id:guid}", async ([FromRoute]Guid id) =>
@@ -105,7 +128,7 @@ app.MapPut("/category", async (
         ) =>
     {
         var validationResult = await validator.ValidateAsync(request);
-        if(!validationResult.IsValid)
+        if (!validationResult.IsValid)
             return Results.ValidationProblem(validationResult.ToDictionary());
 
         var updateResult = await timelineProvider.UpdateCategoryAsync(request);

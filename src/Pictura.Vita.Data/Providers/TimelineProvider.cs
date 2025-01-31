@@ -35,6 +35,22 @@ public class TimelineProvider
     public async Task InsertAsync(Timeline timeline) =>
         await _collection.InsertOneAsync(timeline);
 
+    public async Task<Result<bool>> UpdateTimelineInfoAsync(Timeline timelineIn)
+    {
+        var dbTimeline = await GetAsync(timelineIn.TimelineId);
+
+        if(!dbTimeline.IsSuccess)
+            return new Result<bool>(dbTimeline.Exception);
+
+        var timelineOut = dbTimeline.Value with
+        {
+            TimelineInfo = timelineIn.TimelineInfo
+        };
+
+        await _collection.UpdateOneAsync(t => t.TimelineId == timelineIn.TimelineId, timelineOut);
+        return new Result<bool>(true);
+    }
+
     public async Task<Result<IEnumerable<Category>>> GetCategoriesAsync(Guid timelineId)
     {
         var timeline = await GetAsync(timelineId);

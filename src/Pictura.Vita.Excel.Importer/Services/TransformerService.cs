@@ -50,24 +50,27 @@ internal static class TransformerService
         var timeLine = new Timeline
         {
             TimelineId = Guid.CreateVersion7(),
-            Title = $"{username}'s Timeline",
-            Subtitle = $"Imported on {DateTime.Now}",
-            TimelineSubject = new TimelineSubject
+            TimelineInfo = new TimelineInfo
             {
-                SubjectType = SubjectType.Person,
-                Organization = Organizations.Empty,
-                Person = new Person
+                Title = $"{username}'s Timeline",
+                Subtitle = $"Imported on {DateTime.Now}",
+                TimelineSubject = new TimelineSubject
                 {
-                    Birth = startDate,
-                    Death = DateOnly.MaxValue,
-                    NameParts = [ username ],
-                    BirthPrecision = DatePrecision.Exact,
-                    DeathPrecision = DatePrecision.Exact,
-                    ObfuscateDates = false
-                }
+                    SubjectType = SubjectType.Person,
+                    Organization = Organizations.Empty,
+                    Person = new Person
+                    {
+                        Birth = startDate,
+                        Death = DateOnly.MaxValue,
+                        NameParts = [ username ],
+                        BirthPrecision = DatePrecision.Exact,
+                        DeathPrecision = DatePrecision.Exact,
+                        ObfuscateDates = false
+                    }
+                },
+                Start = startDate,
+                End = DateOnly.MaxValue,
             },
-            Start = startDate,
-            End = DateOnly.MaxValue,
             Episodes = episodes,
             Categories = categories
         };
