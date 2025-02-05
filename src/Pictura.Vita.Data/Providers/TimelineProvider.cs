@@ -28,19 +28,19 @@ public class TimelineProvider
             .SingleOrDefault(x => x.TimelineId == timelineId);
 
         return timeline is null
-            ? new Result<Timeline>(new KeyNotFoundException($"Timeline with id {timelineId} not found"))
-            : new Result<Timeline>(timeline);
+            ? new KeyNotFoundException($"Timeline with id {timelineId} not found")
+            : timeline;
     }
 
     public async Task InsertAsync(Timeline timeline) =>
         await _collection.InsertOneAsync(timeline);
 
-    public async Task<Result<bool>> UpdateTimelineInfoAsync(Timeline timelineIn)
+    public async Task<Result> UpdateTimelineInfoAsync(Timeline timelineIn)
     {
         var dbTimeline = await GetAsync(timelineIn.TimelineId);
 
         if(!dbTimeline.IsSuccess)
-            return new Result<bool>(dbTimeline.Exception);
+            return dbTimeline.Exception;
 
         var timelineOut = dbTimeline.Value with
         {
@@ -48,7 +48,7 @@ public class TimelineProvider
         };
 
         await _collection.UpdateOneAsync(t => t.TimelineId == timelineIn.TimelineId, timelineOut);
-        return new Result<bool>(true);
+        return Results.Success;
     }
 
     public async Task<Result<IEnumerable<Category>>> GetCategoriesAsync(Guid timelineId)
@@ -56,8 +56,8 @@ public class TimelineProvider
         var timeline = await GetAsync(timelineId);
         return timeline.IsSuccess switch
         {
-            false => new Result<IEnumerable<Category>>(timeline.Exception),
-            _ => new Result<IEnumerable<Category>>(timeline.Value.Categories.AsEnumerable())
+            false => timeline.Exception,
+            _ => timeline.Value.Categories.ToList()
         };
     }
 
@@ -68,8 +68,8 @@ public class TimelineProvider
             .SingleOrDefault(x => x.CategoryId == categoryId);
 
         return category is null
-            ? new Result<Category>(new KeyNotFoundException($"Category with id {categoryId} not found"))
-            : new Result<Category>(category);
+            ? new KeyNotFoundException($"Category with id {categoryId} not found")
+            : category;
     }
 
     public async Task<Result<Episode>> GetEpisodeAsync(Guid episodeId)
@@ -79,8 +79,8 @@ public class TimelineProvider
             .SingleOrDefault(x => x.EpisodeId == episodeId);
 
         return episode is null
-            ? new Result<Episode>(new KeyNotFoundException($"Episode with id {episodeId} not found"))
-            : new Result<Episode>(episode);
+            ? new KeyNotFoundException($"Episode with id {episodeId} not found")
+            : episode;
     }
 
     public async Task<Result<Category>> InsertCategoryAsync(InsertCategoryRequest request)
@@ -88,7 +88,7 @@ public class TimelineProvider
         var timeline = await GetAsync(request.TimelineId);
 
         if(!timeline.IsSuccess)
-            return new Result<Category>(timeline.Exception);
+            return timeline.Exception;
 
         var newCategory = new Category
         {
@@ -101,20 +101,20 @@ public class TimelineProvider
         timeline.Value.Categories.Add(newCategory);
         await _collection
             .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
-        return new Result<Category>(newCategory);
+        return newCategory;
     }
 
-    public async Task<Result<bool>> UpdateCategoryAsync(UpdateCategoryRequest request)
+    public async Task<Result> UpdateCategoryAsync(UpdateCategoryRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
 
         if(!timeline.IsSuccess)
-            return new Result<bool>(timeline.Exception);
+            return timeline.Exception;
 
         var category = await GetCategoryAsync(request.Category.CategoryId);
 
         if(!category.IsSuccess)
-            return new Result<bool>(category.Exception);
+            return category.Exception;
 
         timeline.Value.Categories.Remove(category.Value);
 
@@ -127,7 +127,7 @@ public class TimelineProvider
 
         await _collection
             .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
-        return new Result<bool>(true);
+        return Results.Success;
     }
 
     public async Task<Result<Episode>> InsertEpisodeAsync(InsertEpisodeRequest request)
@@ -135,7 +135,7 @@ public class TimelineProvider
         var timeline = await GetAsync(request.TimelineId);
 
         if(!timeline.IsSuccess)
-            return new Result<Episode>(timeline.Exception);
+            return timeline.Exception;
 
         var newEpisode = new Episode
         {
@@ -160,12 +160,12 @@ public class TimelineProvider
         return newEpisode;
     }
 
-    public async Task<Result<bool>> UpdateEpisodeAsync(UpdateEpisodeRequest request)
+    public async Task<Result> UpdateEpisodeAsync(UpdateEpisodeRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);
 
         if(!timeline.IsSuccess)
-            return new Result<bool>(timeline.Exception);
+            return timeline.Exception;
 
         var episode = await GetEpisodeAsync(request.Episode.EpisodeId);
 
@@ -192,7 +192,7 @@ public class TimelineProvider
 
         await _collection
             .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
-        return new Result<bool>(true);
+        return Results.Success;
     }
 }
 
