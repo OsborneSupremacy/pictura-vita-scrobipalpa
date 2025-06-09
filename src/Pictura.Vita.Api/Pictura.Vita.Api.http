@@ -4,3 +4,8 @@ GET {{HostAddress}}/timelines
 Accept: application/json
 
 ###
+
+@TimelineId = 0194ba6e-394c-78e7-841b-5f89daee9d2d
+
+GET {{HostAddress}}/timeline/{{TimelineId}}
+

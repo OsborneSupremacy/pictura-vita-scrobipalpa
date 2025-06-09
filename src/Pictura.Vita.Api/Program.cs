@@ -1,4 +1,5 @@
 using dotenv.net;
+using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
 using Pictura.Vita.Api.Validators;
 using Scalar.AspNetCore;
@@ -28,7 +29,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var timelineProvider = new TimelineProvider();
+var timelineProvider = new TimelineProvider(new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH")));
 
 // timeline endpoints
 

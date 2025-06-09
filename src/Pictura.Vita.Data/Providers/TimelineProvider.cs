@@ -10,10 +10,13 @@ public class TimelineProvider
 {
     private readonly IDocumentCollection<Timeline> _collection;
 
-    public TimelineProvider()
+    // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+    private readonly IDataStore _dataStore;
+
+    public TimelineProvider(IDataStore dataStore)
     {
-        var store = new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH"));
-        _collection = store.GetCollection<Timeline>();
+        _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
+        _collection = _dataStore.GetCollection<Timeline>();
     }
 
     public Task<IEnumerable<Timeline>> GetAllAsync()

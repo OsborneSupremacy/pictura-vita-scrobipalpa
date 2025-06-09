@@ -1,4 +1,5 @@
 ﻿using dotenv.net;
+using JsonFlatFileDataStore;
 using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Excel.Importer.Services;
 using Spectre.Console;
@@ -22,7 +23,8 @@ AnsiConsole.MarkupLine("Found [green]{0}[/] occurrences", occurrences.Count);
 
 var timeline = TransformerService.Transform(occurrences);
 
-var timelineProvider = new TimelineProvider();
+var timelineProvider = new TimelineProvider(new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH")));
+
 timelineProvider.InsertAsync(timeline).GetAwaiter().GetResult();
 
 AnsiConsole.MarkupLine($"Timeline inserted to {dataFilePath} successfully");
