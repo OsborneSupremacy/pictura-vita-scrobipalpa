@@ -146,8 +146,77 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         categories.Should().ContainSingle(c => c.CategoryId == result.Value.CategoryId);
     }
 
+    [Fact]
+    public async Task UpdateCategoryAsync_GivenValidRequest_UpdatesCategory()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var updatedCategory = category with
+        {
+            Title = "Updated Title",
+            Subtitle = "Updated Subtitle",
+            Confidentiality = Confidentiality.OnlyMe
+        };
+        var request = new UpdateCategoryRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Category = updatedCategory
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
 
+        // act
+        var result = await sut.UpdateCategoryAsync(request);
 
+        // assert
+        result.IsSuccess.Should().BeTrue();
 
+        var categories = (await sut.GetCategoriesAsync(timeline.TimelineId)).Value;
+        var actual = categories.First(c => c.CategoryId == category.CategoryId);
+        actual.Title.Should().Be(updatedCategory.Title);
+        actual.Subtitle.Should().Be(updatedCategory.Subtitle);
+        actual.Confidentiality.Should().Be(updatedCategory.Confidentiality);
+    }
 
+    [Fact]
+    public async Task UpdateCategoryAsync_GivenInvalidTimelineId_ReturnsNotFound()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var request = new UpdateCategoryRequest
+        {
+            TimelineId = Guid.NewGuid(),// invalid timeline
+            Category = category
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateCategoryAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateCategoryAsync_GivenInvalidCategoryId_ReturnsNotFound()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var invalidCategory = timeline.Categories.First() with { CategoryId = Guid.NewGuid() };
+        var request = new UpdateCategoryRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Category = invalidCategory
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateCategoryAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
 }
