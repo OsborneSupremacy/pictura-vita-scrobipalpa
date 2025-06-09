@@ -3,6 +3,7 @@ using FluentAssertions;
 using Pictura.Vita.Data.Integration.Tests.Fixtures;
 using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Domain;
+using Pictura.Vita.Messaging;
 
 namespace Pictura.Vita.Data.Integration.Tests;
 
@@ -118,8 +119,32 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         result.Exception.Should().BeOfType<KeyNotFoundException>();
     }
 
+    [Fact]
+    public async Task InsertCategoryAsync_GivenValidRequest_InsertsCategory()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var request = new InsertCategoryRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Confidentiality = Confidentiality.Public,
+            Title = "Test Category",
+            Subtitle = "Test Subtitle"
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
 
+        // act
+        var result = await sut.InsertCategoryAsync(request);
 
+        // assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value.Title.Should().Be(request.Title);
+        result.Value.Subtitle.Should().Be(request.Subtitle);
+
+        var categories = (await sut.GetCategoriesAsync(timeline.TimelineId)).Value;
+        categories.Should().ContainSingle(c => c.CategoryId == result.Value.CategoryId);
+    }
 
 
 
