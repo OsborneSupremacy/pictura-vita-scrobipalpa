@@ -9,60 +9,41 @@ public class DataStoreFixture : IDisposable
 {
     private readonly string _tempFile;
 
+    public Fixture AutoFixture { get; }
+
     public IDataStore DataStore { get; private set; }
+
+    public List<Timeline> GetTimelines() => DataStore
+        .GetCollection<Timeline>()
+        .AsQueryable()
+        .ToList();
 
     public DataStoreFixture()
     {
         _tempFile = Path.Combine(Path.GetTempPath(), $"-timeline-data-{Guid.NewGuid()}.json");
         Console.WriteLine($"Using temporary file: {_tempFile}");
 
-        var autoFixture = new Fixture();
-        autoFixture.Customize(
+        AutoFixture = new Fixture();
+        AutoFixture.Customize(
             new CompositeCustomization(
                 new AutoMoqCustomization(),
-                new SupportMutableValueTypesCustomization())
+                new SupportMutableValueTypesCustomization(),
+                new DateOnlyFixtureCustomization()
+            )
         );
 
         if (File.Exists(_tempFile))
             File.Delete(_tempFile);
 
         DataStore = new DataStore(_tempFile);
-        
-        var collection = DataStore.GetCollection<Timeline>();
-        collection.InsertOne(new Timeline
-        {
-            TimelineId = Guid.NewGuid(),
-            TimelineInfo = new TimelineInfo
-            {
-                Title = "Test Timeline",
-                Subtitle = "This is a test timeline.",
-                TimelineSubject = new()
-                {
-                    SubjectType = SubjectType.Person,
-                    Organization = Organizations.Empty,
-                    Person = new()
-                    {
-                        NameParts = [],
-                        ObfuscateDates = false,
-                        BirthPrecision = DatePrecision.Exact,
-                        Birth = default,
-                        DeathPrecision = DatePrecision.Exact,
-                        Death = default
-                    }
-                },
-                Start = default,
-                End = default
-            },
-            Categories = new List<Category>(),
-            Episodes = []
-        });
-    }
 
-    private void ReleaseUnmanagedResources() => File.Delete(_tempFile);
+        var collection = DataStore.GetCollection<Timeline>();
+        collection.InsertMany(AutoFixture.CreateMany<Timeline>(10));
+    }
 
     private void Dispose(bool disposing)
     {
-        ReleaseUnmanagedResources();
+        File.Delete(_tempFile);
         if (disposing)
             DataStore.Dispose();
     }
@@ -74,4 +55,13 @@ public class DataStoreFixture : IDisposable
     }
 
     ~DataStoreFixture() => Dispose(false);
+}
+
+public class DateOnlyFixtureCustomization: ICustomization
+{
+
+    void ICustomization.Customize(IFixture fixture)
+    {
+        fixture.Customize<DateOnly>(composer => composer.FromFactory<DateTime>(DateOnly.FromDateTime));
+    }
 }
