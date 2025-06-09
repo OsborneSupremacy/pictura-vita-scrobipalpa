@@ -35,8 +35,8 @@ internal static class TransformerService
                 UrlDescription = o.Value.UrlDescription,
                 EpisodeType = o.Value.StartDate.Equals(o.Value.EndDate) ? EpisodeType.Incident : EpisodeType.Era,
                 Start = o.Value.StartDate,
-                StartPrecision = DatePrecision.Exact,
-                EndPrecision = DatePrecision.Exact,
+                StartPrecision = DatePrecision.Day,
+                EndPrecision = DatePrecision.Day,
                 End = o.Value.EndDate,
                 Duration = o.Value.EndDate.Difference(o.Value.StartDate).Days,
                 Confidentiality = Confidentiality.OnlyMe,
@@ -63,8 +63,8 @@ internal static class TransformerService
                         Birth = startDate,
                         Death = DateOnly.MaxValue,
                         NameParts = [ username ],
-                        BirthPrecision = DatePrecision.Exact,
-                        DeathPrecision = DatePrecision.Exact,
+                        BirthPrecision = DatePrecision.Day,
+                        DeathPrecision = DatePrecision.Day,
                         ObfuscateDates = false
                     }
                 },

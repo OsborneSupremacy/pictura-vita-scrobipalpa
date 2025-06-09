@@ -2,7 +2,7 @@ namespace Pictura.Vita.Domain;
 
 public enum DatePrecision
 {
-    Exact,
+    Day,
     Week,
     Month,
     Year,

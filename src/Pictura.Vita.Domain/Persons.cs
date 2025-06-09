@@ -6,9 +6,9 @@ public static class Persons
     {
         NameParts = [],
         ObfuscateDates = false,
-        BirthPrecision = DatePrecision.Exact,
+        BirthPrecision = DatePrecision.Day,
         Birth = DateOnly.MinValue,
-        DeathPrecision = DatePrecision.Exact,
+        DeathPrecision = DatePrecision.Day,
         Death = DateOnly.MaxValue
     };
 }

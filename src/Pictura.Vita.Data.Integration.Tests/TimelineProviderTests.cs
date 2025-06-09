@@ -219,4 +219,46 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         result.IsSuccess.Should().BeFalse();
         result.Exception.Should().BeOfType<KeyNotFoundException>();
     }
+
+    [Fact]
+    public async Task InsertEpisodeAsync_GivenValidRequest_InsertsEpisode()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+
+        var request = _dataStoreFixture.AutoFixture.Build<InsertEpisodeRequest>()
+            .With(x => x.TimelineId, timeline.TimelineId)
+            .With(x => x.CategoryIds, timeline.Categories.Select(c => c.CategoryId).ToList())
+            .Create();
+
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.InsertEpisodeAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeTrue();
+
+        // verify episode is persisted
+        var episodes = (await sut.GetAsync(timeline.TimelineId)).Value.Episodes;
+        episodes.Should().ContainSingle(e => e.EpisodeId == result.Value.EpisodeId);
+    }
+
+    [Fact]
+    public async Task InsertEpisodeAsync_GivenInvalidTimelineId_ReturnsNotFound()
+    {
+        // arrange
+        var request = _dataStoreFixture.AutoFixture.Build<InsertEpisodeRequest>()
+            .With(x => x.TimelineId, Guid.NewGuid())
+            .Create();
+
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.InsertEpisodeAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
 }

@@ -6,9 +6,9 @@ public static class Organizations
     {
         Name = string.Empty,
         ObfuscateDates = false,
-        StartPrecision = DatePrecision.Exact,
+        StartPrecision = DatePrecision.Day,
         Start = DateOnly.MinValue,
-        EndPrecision = DatePrecision.Exact,
+        EndPrecision = DatePrecision.Day,
         End = DateOnly.MaxValue
     };
 }
