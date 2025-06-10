@@ -50,7 +50,7 @@ app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
     .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/timeline", async (
+app.MapPut("/timeline", async (
         [FromServices]TimelineInfoValidator validator,
         [FromBody]Timeline request
         ) =>
