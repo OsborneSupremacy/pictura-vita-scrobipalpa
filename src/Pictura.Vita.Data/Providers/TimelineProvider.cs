@@ -172,6 +172,9 @@ public class TimelineProvider
 
         var episode = await GetEpisodeAsync(request.Episode.EpisodeId);
 
+        if(!episode.IsSuccess)
+            return episode.Exception;
+
         timeline.Value.Episodes.Remove(episode.Value);
 
         var updatedEpisode = episode.Value with

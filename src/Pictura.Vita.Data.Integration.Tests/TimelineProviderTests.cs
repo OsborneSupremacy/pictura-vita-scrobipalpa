@@ -261,4 +261,85 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         result.IsSuccess.Should().BeFalse();
         result.Exception.Should().BeOfType<KeyNotFoundException>();
     }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_GivenValidRequest_UpdatesEpisode()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+
+        var updatedEpisode = episode with
+        {
+            Title = "Updated Episode Title",
+            Subtitle = "Updated Episode Subtitle",
+            Description = "Updated Description",
+            Url = "https://updated.example.com",
+            UrlDescription = "Updated URL",
+            Confidentiality = Confidentiality.OnlyMe,
+            Start = episode.Start.AddDays(1),
+            End = episode.End.AddDays(1),
+            StartPrecision = episode.StartPrecision,
+            EndPrecision = episode.EndPrecision,
+            CategoryIds = timeline.Categories.Select(c => c.CategoryId).ToList()
+        };
+        var request = new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = updatedEpisode
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateEpisodeAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeTrue();
+
+        var episodes = (await sut.GetAsync(timeline.TimelineId)).Value.Episodes;
+        var actual = episodes.First(e => e.EpisodeId == episode.EpisodeId);
+        actual.Title.Should().Be(updatedEpisode.Title);
+    }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_GivenInvalidTimelineId_ReturnsNotFound()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var request = new UpdateEpisodeRequest
+        {
+            TimelineId = Guid.NewGuid(),
+            Episode = episode
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateEpisodeAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_GivenInvalidEpisodeId_ReturnsNotFound()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var invalidEpisode = timeline.Episodes.First() with { EpisodeId = Guid.NewGuid() };
+        var request = new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = invalidEpisode
+        };
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateEpisodeAsync(request);
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
 }
