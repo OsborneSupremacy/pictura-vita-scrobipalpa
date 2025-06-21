@@ -1,8 +1,4 @@
 using JsonFlatFileDataStore;
-using Pictura.Vita.Domain;
-using Pictura.Vita.Messaging;
-using Pictura.Vita.Utility;
-using Pictura.Vita.Utility.Extensions;
 
 namespace Pictura.Vita.Data.Providers;
 
@@ -190,7 +186,7 @@ public class TimelineProvider
             Start = request.Episode.Start,
             EndPrecision = request.Episode.EndPrecision,
             End = request.Episode.End,
-            Duration = request.Episode.End.Difference(request.Episode.Start).Days,
+            Duration = request.Episode.Duration(),
             CategoryIds = request.Episode.CategoryIds
         };
 

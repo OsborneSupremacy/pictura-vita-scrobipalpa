@@ -30,6 +30,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 var timelineProvider = new TimelineProvider(new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH")));
+var randomTimelineProvider = new RandomTimelineProvider();
 
 // timeline endpoints
 
@@ -49,6 +50,15 @@ app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
     .WithOpenApi()
     .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
+
+app.MapGet("/timeline/random", () =>
+    {
+        var timeline = randomTimelineProvider.Generate();
+        return Results.Ok(timeline);
+    })
+    .WithDisplayName("Get a random timeline")
+    .WithOpenApi()
+    .Produces<Timeline>();
 
 app.MapPut("/timeline", async (
         [FromServices]TimelineInfoValidator validator,

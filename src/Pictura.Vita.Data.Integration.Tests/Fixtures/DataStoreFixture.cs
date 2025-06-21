@@ -20,7 +20,7 @@ public class DataStoreFixture : IDisposable
 
     public DataStoreFixture()
     {
-        _tempFile = Path.Combine(Path.GetTempPath(), $"-timeline-data-{Guid.NewGuid()}.json");
+        _tempFile = Path.Combine(Path.GetTempPath(), $"-timeline-data-{Guid.CreateVersion7()}.json");
         Console.WriteLine($"Using temporary file: {_tempFile}");
 
         AutoFixture = new Fixture();

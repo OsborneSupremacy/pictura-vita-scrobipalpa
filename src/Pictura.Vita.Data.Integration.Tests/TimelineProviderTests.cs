@@ -54,7 +54,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
-        var invalidId = Guid.NewGuid();
+        var invalidId = Guid.CreateVersion7();
 
         // act
         var result = await sut.GetAsync(invalidId);
@@ -109,7 +109,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
-        var invalidId = Guid.NewGuid();
+        var invalidId = Guid.CreateVersion7();
 
         // act
         var result = await sut.GetCategoriesAsync(invalidId);
@@ -186,7 +186,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         var category = timeline.Categories.First();
         var request = new UpdateCategoryRequest
         {
-            TimelineId = Guid.NewGuid(),// invalid timeline
+            TimelineId = Guid.CreateVersion7(),// invalid timeline
             Category = category
         };
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
@@ -204,7 +204,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange
         var timeline = _dataStoreFixture.GetTimelines().First();
-        var invalidCategory = timeline.Categories.First() with { CategoryId = Guid.NewGuid() };
+        var invalidCategory = timeline.Categories.First() with { CategoryId = Guid.CreateVersion7() };
         var request = new UpdateCategoryRequest
         {
             TimelineId = timeline.TimelineId,
@@ -249,7 +249,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange
         var request = _dataStoreFixture.AutoFixture.Build<InsertEpisodeRequest>()
-            .With(x => x.TimelineId, Guid.NewGuid())
+            .With(x => x.TimelineId, Guid.CreateVersion7)
             .Create();
 
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
@@ -309,7 +309,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         var episode = timeline.Episodes.First();
         var request = new UpdateEpisodeRequest
         {
-            TimelineId = Guid.NewGuid(),
+            TimelineId = Guid.CreateVersion7(),
             Episode = episode
         };
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
@@ -327,7 +327,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange
         var timeline = _dataStoreFixture.GetTimelines().First();
-        var invalidEpisode = timeline.Episodes.First() with { EpisodeId = Guid.NewGuid() };
+        var invalidEpisode = timeline.Episodes.First() with { EpisodeId = Guid.CreateVersion7() };
         var request = new UpdateEpisodeRequest
         {
             TimelineId = timeline.TimelineId,

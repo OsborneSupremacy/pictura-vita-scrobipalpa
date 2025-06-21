@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Messaging", "P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Data.Integration.Tests", "Pictura.Vita.Data.Integration.Tests\Pictura.Vita.Data.Integration.Tests.csproj", "{85E9513B-D2CA-4459-AA37-AF61E804145B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pictura.Vita.Domain.Extensions", "Pictura.Vita.Domain.Extensions\Pictura.Vita.Domain.Extensions.csproj", "{40C44092-1F63-46E5-A28C-649722A06315}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{85E9513B-D2CA-4459-AA37-AF61E804145B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85E9513B-D2CA-4459-AA37-AF61E804145B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{85E9513B-D2CA-4459-AA37-AF61E804145B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40C44092-1F63-46E5-A28C-649722A06315}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40C44092-1F63-46E5-A28C-649722A06315}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40C44092-1F63-46E5-A28C-649722A06315}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40C44092-1F63-46E5-A28C-649722A06315}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

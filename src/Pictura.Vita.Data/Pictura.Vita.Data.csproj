@@ -7,10 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AutoBogus" Version="2.13.1" />
+        <PackageReference Include="Bogus" Version="35.6.3" />
         <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Pictura.Vita.Domain.Extensions\Pictura.Vita.Domain.Extensions.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Messaging\Pictura.Vita.Messaging.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Utility\Pictura.Vita.Utility.csproj" />
