@@ -35,6 +35,14 @@ var timelineProvider = new TimelineProvider(dataStore);
 var randomTimelineProvider = new RandomTimelineProvider();
 
 // timeline endpoints
+app.MapGet("/timelinesummaries", async () =>
+    {
+        var summaries = await timelineProvider.GetAllSummariesAsync();
+        return Results.Ok(summaries);
+    })
+    .WithDisplayName("Get all timeline summaries")
+    .WithOpenApi()
+    .Produces<IEnumerable<TimelineSummary>>();
 
 app.MapGet("/timelines", async () => await timelineProvider.GetAllAsync())
     .WithDisplayName("Get all timelines")

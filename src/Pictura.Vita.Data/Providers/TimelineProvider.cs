@@ -21,6 +21,14 @@ public class TimelineProvider
         return Task.FromResult(timelines);
     }
 
+    public Task<IEnumerable<TimelineSummary>> GetAllSummariesAsync() =>
+        Task.FromResult(_collection.AsQueryable()
+            .Select(t => new TimelineSummary
+            {
+                TimelineId = t.TimelineId,
+                Title = t.TimelineInfo.Title
+            }));
+
     public async Task<Result<Timeline>> GetAsync(Guid timelineId)
     {
         var timeline = (await GetAllAsync())
