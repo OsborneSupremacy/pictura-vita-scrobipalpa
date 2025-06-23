@@ -29,13 +29,25 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var timelineProvider = new TimelineProvider(new DataStore(Environment.GetEnvironmentVariable("DATA_FILE_PATH")));
+var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
+var dataStore = new DataStore(dataFilePath);
+var timelineProvider = new TimelineProvider(dataStore);
 var randomTimelineProvider = new RandomTimelineProvider();
 
 // timeline endpoints
 
 app.MapGet("/timelines", async () => await timelineProvider.GetAllAsync())
     .WithDisplayName("Get all timelines")
+    .WithOpenApi()
+    .Produces<IEnumerable<Timeline>>();
+
+app.MapGet("/timelines/random", () =>
+    {
+        var timeline = randomTimelineProvider.Generate();
+        List<Timeline> timelines = [ timeline ];
+        return Results.Ok(timelines);
+    })
+    .WithDisplayName("Get random timelines")
     .WithOpenApi()
     .Produces<IEnumerable<Timeline>>();
 
