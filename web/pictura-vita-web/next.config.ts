@@ -5,3 +5,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// for dev only
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
