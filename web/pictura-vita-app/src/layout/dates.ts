@@ -111,6 +111,48 @@ export function wholeYearsBetween(start: DayNumber, end: DayNumber): number {
   return years;
 }
 
+export interface CalendarDiff {
+  years: number;
+  months: number;
+  days: number;
+  /** True when `to` falls before `from`, i.e. the span runs into the future. */
+  future: boolean;
+}
+
+/**
+ * The gap between two dates broken into calendar years, months and leftover days.
+ *
+ * Calendar-aware rather than a division of the day count, so "one year" means the same
+ * date a year later regardless of leap years, and month lengths are respected. The
+ * magnitude is always non-negative; `future` carries the direction.
+ */
+export function calendarDiff(from: DayNumber, to: DayNumber): CalendarDiff {
+  const future = to < from;
+  const earlier = toCivil(future ? to : from);
+  const later = toCivil(future ? from : to);
+
+  let years = later.year - earlier.year;
+  let months = later.month - earlier.month;
+
+  // A day-of-month that has not come round yet means the final month is incomplete.
+  if (later.day < earlier.day) months -= 1;
+
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  // Rather than borrowing a month's length — which can still leave a negative remainder,
+  // e.g. 31 Jan to 1 Mar, where February is shorter than the shortfall — advance the
+  // earlier date by the whole months counted and measure what is left. addMonths already
+  // clamps a day that the target month does not have.
+  const from_ = future ? to : from;
+  const to_ = future ? from : to;
+  const days = to_ - addMonths(from_, years * 12 + months);
+
+  return { years, months, days, future };
+}
+
 export function clamp(value: DayNumber, min: DayNumber, max: DayNumber): DayNumber {
   return Math.min(Math.max(value, min), max);
 }

@@ -10,8 +10,27 @@ import type { DayNumber } from './dates';
 
 export type EpisodeKind = 'incident' | 'era';
 
+/**
+ * Mirrors `Pictura.Vita.Domain.Confidentiality`. Ascending is *more private*, which is the
+ * opposite of the original application's Privacy scale — any filter ported from it has to
+ * flip its comparison.
+ */
+export const Confidentiality = {
+  Inherit: 0,
+  Public: 1,
+  Friends: 2,
+  OnlyMe: 3
+} as const;
+
+export type Confidentiality = (typeof Confidentiality)[keyof typeof Confidentiality];
+
+/** Everything except Inherit: the levels an episode can actually resolve to. */
+export type ResolvedConfidentiality = Exclude<Confidentiality, typeof Confidentiality.Inherit>;
+
 export interface LayoutEpisode {
   episodeId: string;
+  /** May be Inherit, in which case the category supplies the level. */
+  confidentiality: Confidentiality;
   title: string;
   subtitle: string;
   description: string;
@@ -30,6 +49,8 @@ export interface LayoutCategory {
   categoryId: string;
   title: string;
   sortOrder: number;
+  /** A category cannot inherit; it is the thing episodes inherit from. */
+  confidentiality: ResolvedConfidentiality;
 }
 
 export interface LayoutInput {
@@ -41,6 +62,13 @@ export interface LayoutInput {
   ceiling: DayNumber;
   /** Pixel width the timeline is drawn into. */
   totalWidth: number;
+  /**
+   * The most private level to draw. `OnlyMe` shows everything; `Public` shows only what
+   * anyone with the link would see.
+   */
+  maxConfidentiality: ResolvedConfidentiality;
+  /** Categories to draw. Null draws all of them. */
+  visibleCategoryIds: ReadonlySet<string> | null;
 }
 
 /** Layout output types. */

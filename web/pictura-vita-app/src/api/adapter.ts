@@ -1,5 +1,10 @@
 import { toDayNumber } from '../layout';
-import type { LayoutCategory, LayoutEpisode } from '../layout';
+import type {
+  Confidentiality,
+  LayoutCategory,
+  LayoutEpisode,
+  ResolvedConfidentiality
+} from '../layout';
 import { EpisodeType, type ApiCategory, type ApiEpisode } from './types';
 
 /**
@@ -12,6 +17,7 @@ export function toLayoutEpisode(episode: ApiEpisode): LayoutEpisode {
 
   return {
     episodeId: episode.episodeId,
+    confidentiality: episode.confidentiality as Confidentiality,
     title: episode.title,
     subtitle: episode.subtitle,
     description: episode.description,
@@ -32,6 +38,8 @@ export function toLayoutCategory(category: ApiCategory): LayoutCategory {
   return {
     categoryId: category.categoryId,
     title: category.title,
-    sortOrder: category.sortOrder
+    sortOrder: category.sortOrder,
+    // The API rejects a category set to Inherit, so anything stored is already resolved.
+    confidentiality: category.confidentiality as ResolvedConfidentiality
   };
 }

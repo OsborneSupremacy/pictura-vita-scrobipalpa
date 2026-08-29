@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMonths,
+  calendarDiff,
   addYears,
   daySpan,
   daysInMonth,
@@ -78,5 +79,61 @@ describe('wholeYearsBetween', () => {
     expect(wholeYearsBetween(toDayNumber('2000-06-15'), toDayNumber('2010-06-15'))).toBe(10);
     expect(wholeYearsBetween(toDayNumber('2000-06-15'), toDayNumber('2010-06-14'))).toBe(9);
     expect(wholeYearsBetween(toDayNumber('2000-06-15'), toDayNumber('2000-12-31'))).toBe(0);
+  });
+});
+
+describe('calendarDiff', () => {
+  const from = toDayNumber('1989-08-05');
+
+  it('counts whole years to the same date', () => {
+    expect(calendarDiff(from, toDayNumber('2026-08-05'))).toEqual({
+      years: 37, months: 0, days: 0, future: false
+    });
+  });
+
+  it('breaks the remainder into months and days', () => {
+    expect(calendarDiff(from, toDayNumber('2026-08-29'))).toEqual({
+      years: 37, months: 0, days: 24, future: false
+    });
+    expect(calendarDiff(from, toDayNumber('2026-11-20'))).toEqual({
+      years: 37, months: 3, days: 15, future: false
+    });
+  });
+
+  it('borrows from the correct month when the day underflows', () => {
+    // 31 Jan to 1 Mar borrows February's length, not January's.
+    expect(calendarDiff(toDayNumber('2024-01-31'), toDayNumber('2024-03-01'))).toEqual({
+      years: 0, months: 1, days: 1, future: false
+    });
+    expect(calendarDiff(toDayNumber('2023-01-31'), toDayNumber('2023-03-01'))).toEqual({
+      years: 0, months: 1, days: 1, future: false
+    });
+  });
+
+  it('rolls a negative month remainder into the year', () => {
+    expect(calendarDiff(toDayNumber('2020-11-15'), toDayNumber('2021-02-10'))).toEqual({
+      years: 0, months: 2, days: 26, future: false
+    });
+  });
+
+  it('reports the same magnitude in either direction, flagging the future', () => {
+    const a = toDayNumber('2020-03-10');
+    const b = toDayNumber('2024-07-22');
+    const forward = calendarDiff(a, b);
+    const backward = calendarDiff(b, a);
+
+    expect(forward.future).toBe(false);
+    expect(backward.future).toBe(true);
+    expect({ ...backward, future: false }).toEqual({ ...forward, future: false });
+  });
+
+  it('is all zeroes for the same day', () => {
+    expect(calendarDiff(from, from)).toEqual({ years: 0, months: 0, days: 0, future: false });
+  });
+
+  it('handles a leap day anniversary in a non-leap year', () => {
+    expect(calendarDiff(toDayNumber('2024-02-29'), toDayNumber('2025-03-01'))).toEqual({
+      years: 1, months: 0, days: 1, future: false
+    });
   });
 });

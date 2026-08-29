@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { EpisodeType, type ApiEpisode } from '../api/types';
-import { toIso, toDayNumber, daySpan, type TimeItem } from '../layout';
+import { toIso, toDayNumber, daySpan, type DayNumber, type TimeItem } from '../layout';
+import { describeGap, gapLabel } from './elapsed';
 
 /** Position and size of the clicked item, relative to the timeline container. */
 export interface Anchor {
@@ -15,6 +16,8 @@ interface Props {
   episode: ApiEpisode | undefined;
   anchor: Anchor;
   containerWidth: number;
+  /** Passed in rather than read from the clock, so the panel renders deterministically. */
+  today: DayNumber;
   onClose: () => void;
   onZoom: (start: number, end: number) => void;
 }
@@ -31,7 +34,15 @@ function years(days: number): string {
   return (days / 365.2425).toFixed(2);
 }
 
-export function DetailPanel({ item, episode, anchor, containerWidth, onClose, onZoom }: Props) {
+export function DetailPanel({
+  item,
+  episode,
+  anchor,
+  containerWidth,
+  today,
+  onClose,
+  onZoom
+}: Props) {
   const panel = useRef<HTMLElement>(null);
 
   // Hidden for the first paint so the panel is never seen at its pre-measurement position.
@@ -92,6 +103,7 @@ export function DetailPanel({ item, episode, anchor, containerWidth, onClose, on
     const start = toDayNumber(episode.start);
     const end = episode.indefinite ? item.end : toDayNumber(episode.end);
     const duration = daySpan(start, end);
+    const isIncident = episode.episodeType !== EpisodeType.Era;
 
     return (
       <>
@@ -106,11 +118,38 @@ export function DetailPanel({ item, episode, anchor, containerWidth, onClose, on
               : episode.end !== episode.start && ` — ${formatDate(episode.end)}`}
           </dd>
 
-          <dt>Duration</dt>
-          <dd>
-            {duration.toLocaleString()} {duration === 1 ? 'day' : 'days'}
-            {duration > 365 && ` (${years(duration)} years)`}
-          </dd>
+          {/* An incident starts and ends on the same day, so a second identical row would
+              say nothing; it gets one unqualified gap instead. */}
+          {isIncident ? (
+            <>
+              <dt>{gapLabel('', start, today).trim()}</dt>
+              <dd>{describeGap(start, today)}</dd>
+            </>
+          ) : (
+            <>
+              <dt>{gapLabel('start', start, today)}</dt>
+              <dd>{describeGap(start, today)}</dd>
+
+              {!episode.indefinite && (
+                <>
+                  <dt>{gapLabel('end', end, today)}</dt>
+                  <dd>{describeGap(end, today)}</dd>
+                </>
+              )}
+            </>
+          )}
+
+          {/* A single-day incident has no duration worth stating; "1 day" only restates
+              the date already shown above it. */}
+          {episode.episodeType === EpisodeType.Era && (
+            <>
+              <dt>Duration</dt>
+              <dd>
+                {duration.toLocaleString()} {duration === 1 ? 'day' : 'days'}
+                {duration > 365 && ` (${years(duration)} years)`}
+              </dd>
+            </>
+          )}
         </dl>
 
         {episode.description && <p className="description">{episode.description}</p>}

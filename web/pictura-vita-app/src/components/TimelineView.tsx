@@ -1,11 +1,21 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ApiTimeline } from '../api/types';
 import { toLayoutCategory, toLayoutEpisode } from '../api/adapter';
-import { buildLayout, deriveWindow, toIso, type DayNumber, type TimeItem } from '../layout';
+import {
+  buildLayout,
+  Confidentiality,
+  deriveWindow,
+  filterByConfidentiality,
+  toIso,
+  type DayNumber,
+  type ResolvedConfidentiality,
+  type TimeItem
+} from '../layout';
 import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
 import { Band } from './Band';
 import { DetailPanel, type Anchor } from './DetailPanel';
+import { FilterControls } from './FilterControls';
 
 interface Props {
   timeline: ApiTimeline;
@@ -16,6 +26,11 @@ export function TimelineView({ timeline, today }: Props) {
   const [surfaceRef, width] = useElementWidth<HTMLDivElement>();
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<{ floor: DayNumber; ceiling: DayNumber } | null>(null);
+  const [maxConfidentiality, setMaxConfidentiality] = useState<ResolvedConfidentiality>(
+    Confidentiality.OnlyMe
+  );
+  // Tracked as hidden rather than visible so a category added later shows up by default.
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
 
   // Anchor coordinates are taken relative to the timeline container rather than the
@@ -46,11 +61,53 @@ export function TimelineView({ timeline, today }: Props) {
     [timeline]
   );
 
-  const window = useMemo(() => zoom ?? deriveWindow(episodes, today), [zoom, episodes, today]);
+  // The window follows the confidentiality filter, so hiding private episodes rescales to
+  // what is left — the original refetched for this. It deliberately does *not* follow the
+  // category toggles, which only hide bands, so ticking a box never moves the axis.
+  const window = useMemo(() => {
+    if (zoom) return zoom;
+    return deriveWindow(filterByConfidentiality(episodes, categories, maxConfidentiality), today);
+  }, [zoom, episodes, categories, maxConfidentiality, today]);
+
+  const visibleCategoryIds = useMemo(
+    () =>
+      hiddenCategoryIds.size === 0
+        ? null
+        : new Set(
+            categories
+              .map(category => category.categoryId)
+              .filter(id => !hiddenCategoryIds.has(id))
+          ),
+    [categories, hiddenCategoryIds]
+  );
 
   const layout = useMemo(
-    () => buildLayout({ episodes, categories, ...window, totalWidth: width }),
-    [episodes, categories, window, width]
+    () =>
+      buildLayout({
+        episodes,
+        categories,
+        ...window,
+        maxConfidentiality,
+        visibleCategoryIds,
+        totalWidth: width
+      }),
+    [episodes, categories, window, maxConfidentiality, visibleCategoryIds, width]
+  );
+
+  const toggleCategory = useCallback((categoryId: string) => {
+    setHiddenCategoryIds(current => {
+      const next = new Set(current);
+      if (!next.delete(categoryId)) next.add(categoryId);
+      return next;
+    });
+  }, []);
+
+  const setAllCategories = useCallback(
+    (visible: boolean) =>
+      setHiddenCategoryIds(
+        visible ? new Set() : new Set(categories.map(category => category.categoryId))
+      ),
+    [categories]
   );
 
   // Zooming is pure client-side recomputation. The original refetched from the server
@@ -65,8 +122,21 @@ export function TimelineView({ timeline, today }: Props) {
       <div className="toolbar">
         <span className="range">
           {toIso(window.floor)} – {toIso(window.ceiling)}
-          <span className="muted"> · {layout.totalDays.toLocaleString()} days</span>
+          <span className="muted">
+            {' '}
+            · {layout.totalDays.toLocaleString()} {layout.totalDays === 1 ? 'day' : 'days'}
+          </span>
         </span>
+
+        <FilterControls
+          categories={categories}
+          hiddenCategoryIds={hiddenCategoryIds}
+          onToggleCategory={toggleCategory}
+          onSetAllCategories={setAllCategories}
+          maxConfidentiality={maxConfidentiality}
+          onConfidentialityChange={setMaxConfidentiality}
+        />
+
         {zoom && (
           <button type="button" onClick={() => setZoom(null)}>
             Reset zoom
@@ -76,7 +146,11 @@ export function TimelineView({ timeline, today }: Props) {
 
       <div className="surface" ref={surfaceRef}>
         {width === 0 ? null : layout.isEmpty ? (
-          <p className="empty">Nothing falls within this range.</p>
+          <p className="empty">
+            {hiddenCategoryIds.size === categories.length && categories.length > 0
+              ? 'No categories are selected.'
+              : 'Nothing matches the current filters.'}
+          </p>
         ) : (
           <>
             <AxisRow increments={layout.axis} onZoom={onZoom} />
@@ -106,6 +180,7 @@ export function TimelineView({ timeline, today }: Props) {
           }
           anchor={selected.anchor}
           containerWidth={width}
+          today={today}
           onClose={() => setSelected(null)}
           onZoom={onZoom}
         />

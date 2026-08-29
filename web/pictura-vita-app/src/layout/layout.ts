@@ -1,5 +1,6 @@
 import { buildAxis } from './axis';
 import { clamp, daySpan, type DayNumber } from './dates';
+import { Confidentiality } from './types';
 import type {
   CategoryBand,
   LayoutCategory,
@@ -7,6 +8,7 @@ import type {
   LayoutInput,
   Rail,
   RailKind,
+  ResolvedConfidentiality,
   TimeItem,
   TimelineLayout
 } from './types';
@@ -47,6 +49,42 @@ const emptyLayout = (
   bands: [],
   isEmpty: true
 });
+
+/**
+ * The level an episode is actually shown at within a given category.
+ *
+ * An episode set to Inherit takes the category's level, so the *same* episode can be
+ * visible in one band and hidden in another. That is why this resolves per
+ * (episode, category) pair rather than once per episode.
+ */
+export function resolveConfidentiality(
+  episode: LayoutEpisode,
+  category: LayoutCategory
+): ResolvedConfidentiality {
+  return episode.confidentiality === Confidentiality.Inherit
+    ? category.confidentiality
+    : (episode.confidentiality as ResolvedConfidentiality);
+}
+
+/**
+ * Episodes visible at `maxConfidentiality` in at least one of their categories. Used to
+ * derive the drawn window, which should reflect what is actually on screen.
+ */
+export function filterByConfidentiality(
+  episodes: LayoutEpisode[],
+  categories: LayoutCategory[],
+  maxConfidentiality: ResolvedConfidentiality
+): LayoutEpisode[] {
+  const byId = new Map(categories.map(category => [category.categoryId, category]));
+
+  return episodes.filter(episode =>
+    episode.categoryIds.some(categoryId => {
+      const category = byId.get(categoryId);
+      return category !== undefined
+        && resolveConfidentiality(episode, category) <= maxConfidentiality;
+    })
+  );
+}
 
 /** The end a drawn box should use: indefinite episodes run to the window's edge. */
 function effectiveEnd(episode: LayoutEpisode, ceiling: DayNumber): DayNumber {
@@ -248,9 +286,13 @@ function buildBand(
   category: LayoutCategory,
   episodes: LayoutEpisode[],
   scale: Scale,
-  colorIndex: number
+  colorIndex: number,
+  maxConfidentiality: ResolvedConfidentiality
 ): CategoryBand {
-  const visible = episodes.filter(episode => isVisible(episode, scale)).sort(compareEpisodes);
+  const visible = episodes
+    .filter(episode => resolveConfidentiality(episode, category) <= maxConfidentiality)
+    .filter(episode => isVisible(episode, scale))
+    .sort(compareEpisodes);
 
   const eraItems: TimeItem[] = [];
   const incidentItems: TimeItem[] = [];
@@ -350,9 +392,19 @@ export function buildLayout(input: LayoutInput): TimelineLayout {
   }
 
   const bands = [...input.categories]
+    .filter(
+      category =>
+        input.visibleCategoryIds === null || input.visibleCategoryIds.has(category.categoryId)
+    )
     .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title))
     .map((category, index) =>
-      buildBand(category, byCategory.get(category.categoryId) ?? [], scale, index % PALETTE_SIZE)
+      buildBand(
+        category,
+        byCategory.get(category.categoryId) ?? [],
+        scale,
+        index % PALETTE_SIZE,
+        input.maxConfidentiality
+      )
     )
     .filter(band => band.eraRails.length > 0 || band.incidentRailsAbove.length > 0);
 

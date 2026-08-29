@@ -1,15 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { toDayNumber } from './dates';
 import { deriveWindow } from './bounds';
-import { buildLayout, PALETTE_SIZE, SLIVER_THRESHOLD_PX } from './layout';
-import type { LayoutCategory, LayoutEpisode, Rail } from './types';
+import {
+  buildLayout,
+  filterByConfidentiality,
+  PALETTE_SIZE,
+  SLIVER_THRESHOLD_PX
+} from './layout';
+import { Confidentiality } from './types';
+import type { LayoutCategory, LayoutEpisode, Rail, ResolvedConfidentiality } from './types';
 
 const day = toDayNumber;
 
-const category = (id: string, sortOrder: number, title = id): LayoutCategory => ({
+const category = (
+  id: string,
+  sortOrder: number,
+  title = id,
+  confidentiality: ResolvedConfidentiality = Confidentiality.Public
+): LayoutCategory => ({
   categoryId: id,
   title,
-  sortOrder
+  sortOrder,
+  confidentiality
 });
 
 let sequence = 0;
@@ -24,13 +36,20 @@ const episode = (overrides: Partial<LayoutEpisode> & Pick<LayoutEpisode, 'start'
   kind: 'era',
   end: overrides.start,
   indefinite: false,
+  confidentiality: Confidentiality.Public,
   categoryIds: ['work'],
   ...overrides
 });
 
 const drawn = (rail: Rail) => rail.items.filter(item => item.kind !== 'placeholder');
 
-const WINDOW = { floor: day('2000-01-01'), ceiling: day('2009-12-31') };
+const WINDOW = {
+  floor: day('2000-01-01'),
+  ceiling: day('2009-12-31'),
+  // Defaults for the filters; individual tests override them.
+  maxConfidentiality: Confidentiality.OnlyMe as ResolvedConfidentiality,
+  visibleCategoryIds: null
+};
 
 describe('buildLayout', () => {
   it('sizes an era proportionally to its share of the window', () => {
@@ -412,6 +431,174 @@ describe('categories', () => {
   });
 });
 
+describe('confidentiality filter', () => {
+  const spanning = (conf: Confidentiality, categoryIds = ['work']) =>
+    episode({
+      start: day('2001-01-01'),
+      end: day('2002-12-31'),
+      confidentiality: conf,
+      categoryIds
+    });
+
+  const bandCount = (
+    maxConfidentiality: ResolvedConfidentiality,
+    episodes: LayoutEpisode[],
+    categories: LayoutCategory[]
+  ) =>
+    buildLayout({ categories, episodes, ...WINDOW, maxConfidentiality, totalWidth: 1000 }).bands;
+
+  it('hides anything more private than the selected level', () => {
+    const episodes = [
+      spanning(Confidentiality.Public),
+      spanning(Confidentiality.Friends),
+      spanning(Confidentiality.OnlyMe)
+    ];
+    const categories = [category('work', 0)];
+
+    expect(bandCount(Confidentiality.OnlyMe, episodes, categories)[0]!.eraRails.flatMap(drawn))
+      .toHaveLength(3);
+    expect(bandCount(Confidentiality.Friends, episodes, categories)[0]!.eraRails.flatMap(drawn))
+      .toHaveLength(2);
+    expect(bandCount(Confidentiality.Public, episodes, categories)[0]!.eraRails.flatMap(drawn))
+      .toHaveLength(1);
+  });
+
+  it('takes the level from the category when the episode inherits', () => {
+    const episodes = [spanning(Confidentiality.Inherit)];
+    const categories = [category('work', 0, 'work', Confidentiality.OnlyMe)];
+
+    expect(bandCount(Confidentiality.OnlyMe, episodes, categories)).toHaveLength(1);
+    expect(bandCount(Confidentiality.Public, episodes, categories)).toHaveLength(0);
+  });
+
+  it('shows an inheriting episode in one category and hides it in another', () => {
+    // The behaviour the original got for free from its row-per-category SQL join: one
+    // episode, two categories at different levels, so it is public in one and not the other.
+    const episodes = [spanning(Confidentiality.Inherit, ['open', 'closed'])];
+    const categories = [
+      category('open', 0, 'Open', Confidentiality.Public),
+      category('closed', 1, 'Closed', Confidentiality.OnlyMe)
+    ];
+
+    expect(bandCount(Confidentiality.OnlyMe, episodes, categories).map(b => b.title))
+      .toEqual(['Open', 'Closed']);
+    expect(bandCount(Confidentiality.Public, episodes, categories).map(b => b.title))
+      .toEqual(['Open']);
+  });
+
+  it("does not let an episode's own level be overridden by its category", () => {
+    // An explicit level wins over the category's, in both directions.
+    const inPrivateCategory = [spanning(Confidentiality.Public)];
+    const categories = [category('work', 0, 'work', Confidentiality.OnlyMe)];
+    expect(bandCount(Confidentiality.Public, inPrivateCategory, categories)).toHaveLength(1);
+
+    const inPublicCategory = [spanning(Confidentiality.OnlyMe)];
+    const openCategories = [category('work', 0, 'work', Confidentiality.Public)];
+    expect(bandCount(Confidentiality.Public, inPublicCategory, openCategories)).toHaveLength(0);
+  });
+
+  it('drops a band whose every episode is filtered out', () => {
+    const episodes = [
+      spanning(Confidentiality.Public, ['open']),
+      spanning(Confidentiality.OnlyMe, ['closed'])
+    ];
+    const categories = [
+      category('open', 0, 'Open', Confidentiality.Public),
+      category('closed', 1, 'Closed', Confidentiality.Public)
+    ];
+
+    expect(bandCount(Confidentiality.Public, episodes, categories).map(b => b.title))
+      .toEqual(['Open']);
+  });
+});
+
+describe('filterByConfidentiality', () => {
+  it('keeps an episode visible through any one of its categories', () => {
+    const shared = episode({
+      start: day('2001-01-01'),
+      end: day('2002-12-31'),
+      confidentiality: Confidentiality.Inherit,
+      categoryIds: ['open', 'closed']
+    });
+    const categories = [
+      category('open', 0, 'Open', Confidentiality.Public),
+      category('closed', 1, 'Closed', Confidentiality.OnlyMe)
+    ];
+
+    expect(filterByConfidentiality([shared], categories, Confidentiality.Public)).toHaveLength(1);
+  });
+
+  it('drops an episode hidden in every category it belongs to', () => {
+    const hidden = episode({
+      start: day('2001-01-01'),
+      end: day('2002-12-31'),
+      confidentiality: Confidentiality.Inherit,
+      categoryIds: ['closed']
+    });
+    const categories = [category('closed', 0, 'Closed', Confidentiality.OnlyMe)];
+
+    expect(filterByConfidentiality([hidden], categories, Confidentiality.Public)).toHaveLength(0);
+  });
+
+  it('ignores category ids that do not resolve', () => {
+    const orphan = episode({
+      start: day('2001-01-01'),
+      end: day('2002-12-31'),
+      confidentiality: Confidentiality.Public,
+      categoryIds: ['missing']
+    });
+
+    expect(filterByConfidentiality([orphan], [], Confidentiality.OnlyMe)).toHaveLength(0);
+  });
+});
+
+describe('category filter', () => {
+  const twoCategories = {
+    categories: [category('work', 0, 'Work'), category('health', 1, 'Health')],
+    episodes: [
+      episode({ start: day('2001-01-01'), end: day('2002-12-31'), categoryIds: ['work'] }),
+      episode({ start: day('2001-01-01'), end: day('2002-12-31'), categoryIds: ['health'] })
+    ]
+  };
+
+  it('draws every category when no selection is given', () => {
+    const layout = buildLayout({ ...twoCategories, ...WINDOW, totalWidth: 1000 });
+    expect(layout.bands.map(b => b.title)).toEqual(['Work', 'Health']);
+  });
+
+  it('draws only the selected categories', () => {
+    const layout = buildLayout({
+      ...twoCategories,
+      ...WINDOW,
+      visibleCategoryIds: new Set(['health']),
+      totalWidth: 1000
+    });
+    expect(layout.bands.map(b => b.title)).toEqual(['Health']);
+  });
+
+  it('is empty when nothing is selected', () => {
+    const layout = buildLayout({
+      ...twoCategories,
+      ...WINDOW,
+      visibleCategoryIds: new Set<string>(),
+      totalWidth: 1000
+    });
+    expect(layout.bands).toHaveLength(0);
+    expect(layout.isEmpty).toBe(true);
+  });
+
+  it('keeps colours tied to the categories still shown', () => {
+    // Colours come from position among the drawn bands, so hiding one renumbers the rest.
+    const layout = buildLayout({
+      ...twoCategories,
+      ...WINDOW,
+      visibleCategoryIds: new Set(['health']),
+      totalWidth: 1000
+    });
+    expect(layout.bands[0]!.colorIndex).toBe(0);
+  });
+});
+
 describe('degenerate input', () => {
   it('returns an empty layout for a zero width', () => {
     const layout = buildLayout({
@@ -431,6 +618,8 @@ describe('degenerate input', () => {
       episodes: [],
       floor: WINDOW.ceiling,
       ceiling: WINDOW.floor,
+      maxConfidentiality: WINDOW.maxConfidentiality,
+      visibleCategoryIds: null,
       totalWidth: 1000
     });
 
@@ -443,6 +632,8 @@ describe('degenerate input', () => {
       episodes: [episode({ kind: 'incident', start: day('2005-06-15') })],
       floor: day('2005-06-15'),
       ceiling: day('2005-06-15'),
+      maxConfidentiality: WINDOW.maxConfidentiality,
+      visibleCategoryIds: null,
       totalWidth: 1000
     });
 

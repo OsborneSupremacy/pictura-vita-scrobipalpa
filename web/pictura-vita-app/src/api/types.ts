@@ -2,13 +2,9 @@
  * Wire types, mirroring `Pictura.Vita.Domain`. Serialized camelCase by System.Text.Json.
  */
 
-/** `Pictura.Vita.Domain.Confidentiality` */
-export const Confidentiality = {
-  Inherit: 0,
-  Public: 1,
-  Friends: 2,
-  OnlyMe: 3
-} as const;
+// Defined in the layout module, which needs it to resolve inherited levels; re-exported
+// here so callers working with wire types have it to hand.
+export { Confidentiality } from '../layout';
 
 /** `Pictura.Vita.Domain.EpisodeType` */
 export const EpisodeType = {
