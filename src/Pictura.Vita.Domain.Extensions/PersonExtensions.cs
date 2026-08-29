@@ -2,12 +2,15 @@
 
 public static class PersonExtensions
 {
-    public static string GetFullName(this Person person) =>
-        !person.NameParts.Any() ? "Anonymous" : string.Join(" ", person.NameParts);
-
-    public static string GetFullNamePossessive(this Person person)
+    extension(Person person)
     {
-        var fullName = person.GetFullName();
-        return fullName.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? $"{fullName}'" : $"{fullName}'s";
+        public string GetFullName() =>
+            !person.NameParts.Any() ? "Anonymous" : string.Join(" ", person.NameParts).Trim();
+
+        public string GetFullNamePossessive()
+        {
+            var fullName = person.GetFullName();
+            return fullName.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? $"{fullName}'" : $"{fullName}'s";
+        }
     }
 }

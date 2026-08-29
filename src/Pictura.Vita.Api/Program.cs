@@ -30,6 +30,19 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
+
+// Fail loudly at startup rather than serving an empty store: a data file that is missing or
+// misconfigured otherwise looks identical to a timeline with nothing in it.
+if (string.IsNullOrWhiteSpace(dataFilePath))
+    throw new InvalidOperationException(
+        "DATA_FILE_PATH is not set. Copy .env.example to .env in the API project and point "
+        + "DATA_FILE_PATH at your timeline JSON file.");
+
+if (!File.Exists(dataFilePath))
+    throw new InvalidOperationException(
+        $"DATA_FILE_PATH points at \"{dataFilePath}\", which does not exist. Check the path in "
+        + "the API project's .env file, or run the Excel importer to generate it.");
+
 var dataStore = new DataStore(dataFilePath);
 var timelineProvider = new TimelineProvider(dataStore);
 var randomTimelineProvider = new RandomTimelineProvider();
