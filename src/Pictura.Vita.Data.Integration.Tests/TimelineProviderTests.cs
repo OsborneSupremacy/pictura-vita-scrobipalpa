@@ -192,6 +192,182 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     }
 
     [Fact]
+    public async Task DeleteCategoryAsync_RemovesTheCategoryButLeavesEpisodesInPlace()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // Give the category an episode of its own; the fixture's episodes carry unrelated
+        // category ids, so without this there would be no reference to observe.
+        var episode = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+            .Build<InsertEpisodeRequest>()
+            .With(x => x.TimelineId, timeline.TimelineId)
+            .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
+            .With(x => x.Indefinite, false)
+            .Create())).Value;
+
+        var episodesBefore = (await sut.GetAsync(timeline.TimelineId)).Value.Episodes.Count;
+
+        // act
+        var result = await sut.DeleteCategoryAsync(category.CategoryId);
+
+        // assert
+        result.IsSuccess.Should().BeTrue();
+
+        var after = (await sut.GetAsync(timeline.TimelineId)).Value;
+        after.Categories.Should().NotContain(c => c.CategoryId == category.CategoryId);
+
+        // The episode survives, still carrying the now-dangling category id: removing a
+        // category hides episodes from the timeline, it does not delete them.
+        after.Episodes.Should().HaveCount(episodesBefore);
+        after.Episodes
+            .Single(e => e.EpisodeId == episode.EpisodeId)
+            .CategoryIds
+            .Should()
+            .Contain(category.CategoryId);
+    }
+
+    [Fact]
+    public async Task InsertCategoryAsync_WritesThroughToTheFile()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var inserted = await sut.InsertCategoryAsync(new InsertCategoryRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Title = "Persisted",
+            Subtitle = string.Empty,
+            Confidentiality = Confidentiality.Public,
+            SortOrder = 99
+        });
+
+        // assert - reopening the file is the only check that catches a write which only ever
+        // reached the in-memory collection.
+        inserted.IsSuccess.Should().BeTrue();
+
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Categories.Should()
+            .Contain(c => c.CategoryId == inserted.Value.CategoryId);
+    }
+
+    [Fact]
+    public async Task UpdateCategoryAsync_WritesThroughToTheFile()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        await sut.UpdateCategoryAsync(new UpdateCategoryRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Category = category with { Title = "Renamed on disk" }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Categories.Single(c => c.CategoryId == category.CategoryId)
+            .Title.Should()
+            .Be("Renamed on disk");
+    }
+
+    [Fact]
+    public async Task DeleteCategoryAsync_WritesThroughToTheFile()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.Last();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        await sut.DeleteCategoryAsync(category.CategoryId);
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Categories.Should()
+            .NotContain(c => c.CategoryId == category.CategoryId);
+    }
+
+    [Theory]
+    [InlineData("2005-01-01", "2005-01-01", false, EpisodeType.Incident)]
+    [InlineData("2005-01-01", "2005-06-30", false, EpisodeType.Era)]
+    [InlineData("2005-01-01", "9999-12-31", true, EpisodeType.Era)]
+    public async Task UpdateEpisodeAsync_DerivesEpisodeTypeFromTheDates(
+        string start, string end, bool indefinite, EpisodeType expected)
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act - deliberately claim the wrong type; the dates decide.
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with
+            {
+                Start = DateOnly.Parse(start),
+                End = DateOnly.Parse(end),
+                Indefinite = indefinite,
+                EpisodeType = expected == EpisodeType.Era ? EpisodeType.Incident : EpisodeType.Era
+            }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .EpisodeType.Should()
+            .Be(expected);
+    }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_WritesThroughToTheFile()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with { Title = "Edited on disk" }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .Title.Should()
+            .Be("Edited on disk");
+    }
+
+    [Fact]
+    public async Task DeleteCategoryAsync_GivenUnknownCategory_ReturnsNotFound()
+    {
+        // arrange
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.DeleteCategoryAsync(Guid.CreateVersion7());
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
+
+    [Fact]
     public async Task UpdateCategoryAsync_GivenValidRequest_UpdatesCategory()
     {
         // arrange

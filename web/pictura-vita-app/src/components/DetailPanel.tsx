@@ -20,6 +20,7 @@ interface Props {
   today: DayNumber;
   onClose: () => void;
   onZoom: (start: number, end: number) => void;
+  onEdit: (episode: ApiEpisode) => void;
 }
 
 /** Distance between the item and the panel pointing at it. */
@@ -41,7 +42,8 @@ export function DetailPanel({
   containerWidth,
   today,
   onClose,
-  onZoom
+  onZoom,
+  onEdit
 }: Props) {
   const panel = useRef<HTMLElement>(null);
 
@@ -162,13 +164,19 @@ export function DetailPanel({
           </p>
         )}
 
-        {/* Only spans are worth zooming to. Zooming to a single-day incident would
-            collapse the window to one day and show nothing but that one item. */}
-        {episode.episodeType === EpisodeType.Era && (
-          <button type="button" className="zoom" onClick={() => onZoom(start, end)}>
-            Zoom to {toIso(start)} – {toIso(end)}
+        <div className="detail-actions">
+          <button type="button" onClick={() => onEdit(episode)}>
+            Edit
           </button>
-        )}
+
+          {/* Only spans are worth zooming to. Zooming to a single-day incident would
+              collapse the window to one day and show nothing but that one item. */}
+          {episode.episodeType === EpisodeType.Era && (
+            <button type="button" onClick={() => onZoom(start, end)}>
+              Zoom to {toIso(start)} – {toIso(end)}
+            </button>
+          )}
+        </div>
       </>
     );
   };

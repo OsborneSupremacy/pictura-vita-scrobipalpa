@@ -92,6 +92,24 @@ export interface ApiTimelineSummary {
   title: string;
 }
 
+export interface InsertCategoryRequest {
+  timelineId: string;
+  title: string;
+  subtitle: string;
+  confidentiality: number;
+  sortOrder: number;
+}
+
+export interface UpdateCategoryRequest {
+  timelineId: string;
+  category: ApiCategory;
+}
+
+export interface UpdateEpisodeRequest {
+  timelineId: string;
+  episode: ApiEpisode;
+}
+
 export interface UpdateTimelineInfoRequest {
   timelineId: string;
   timelineInfo: ApiTimelineInfo;

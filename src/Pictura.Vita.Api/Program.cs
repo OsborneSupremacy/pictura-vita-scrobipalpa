@@ -155,7 +155,7 @@ app.MapPost("/category", async (
 
         return newCategory is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.CreatedAtRoute($"/categories/{newCategory.Value.CategoryId}");
+            : Results.Created($"/category/{newCategory.Value.CategoryId}", newCategory.Value);
     })
     .WithDisplayName("Create a new category")
     .Produces(StatusCodes.Status201Created)
@@ -180,6 +180,18 @@ app.MapPut("/category", async (
     .WithDisplayName("Update a category")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapDelete("/category/{id:guid}", async ([FromRoute]Guid id) =>
+    {
+        var deleteResult = await timelineProvider.DeleteCategoryAsync(id);
+
+        return deleteResult is { IsFaulted: true, Exception: KeyNotFoundException }
+            ? Results.NotFound()
+            : Results.NoContent();
+    })
+    .WithDisplayName("Delete a category")
+    .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
 // episode endpoints
@@ -209,7 +221,7 @@ app.MapPost("/episode", async (
 
         return newEpisode is { IsFaulted: true, Exception: KeyNotFoundException }
             ? Results.NotFound()
-            : Results.CreatedAtRoute($"/episodes/{newEpisode.Value.EpisodeId}");
+            : Results.Created($"/episodes/{newEpisode.Value.EpisodeId}", newEpisode.Value);
     })
     .WithDisplayName("Create a new episode")
     .Produces(StatusCodes.Status201Created)

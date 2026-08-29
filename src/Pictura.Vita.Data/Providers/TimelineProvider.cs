@@ -2,6 +2,16 @@ using JsonFlatFileDataStore;
 
 namespace Pictura.Vita.Data.Providers;
 
+/// <summary>
+/// Reads and writes timelines.
+///
+/// Every mutation writes the whole document with ReplaceOneAsync. The store's
+/// UpdateOneAsync patches property by property, which fails both ways here: handed a
+/// Result&lt;Timeline&gt; it matches no properties and silently writes nothing, and handed a
+/// real Timeline it cannot construct the IList&lt;Guid&gt; behind Episode.CategoryIds. Changes
+/// appeared to work either way because the in-memory collection had already been mutated;
+/// only the file was left behind.
+/// </summary>
 public class TimelineProvider
 {
     private readonly IDocumentCollection<Timeline> _collection;
@@ -71,7 +81,7 @@ public class TimelineProvider
             TimelineInfo = request.TimelineInfo
         };
 
-        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timelineOut);
+        await _collection.ReplaceOneAsync(t => t.TimelineId == request.TimelineId, timelineOut);
         return Results.Success;
     }
 
@@ -125,7 +135,7 @@ public class TimelineProvider
 
         timeline.Value.Categories.Add(newCategory);
         await _collection
-            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+            .ReplaceOneAsync(t => t.TimelineId == request.TimelineId, timeline.Value);
         return newCategory;
     }
 
@@ -152,7 +162,31 @@ public class TimelineProvider
         });
 
         await _collection
-            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+            .ReplaceOneAsync(t => t.TimelineId == request.TimelineId, timeline.Value);
+        return Results.Success;
+    }
+
+    /// <summary>
+    /// Removes a category from its timeline.
+    ///
+    /// Episodes keep the category id they were tagged with. They are left in the file
+    /// untouched and simply stop being drawn, since the layout only draws episodes whose
+    /// category it can resolve. Deleting a category is therefore not a way to delete
+    /// episodes, and nothing is lost that could not be recovered by recreating the
+    /// category with the same id.
+    /// </summary>
+    public async Task<Result> DeleteCategoryAsync(Guid categoryId)
+    {
+        var timeline = (await GetAllAsync())
+            .SingleOrDefault(t => t.Categories.Any(c => c.CategoryId == categoryId));
+
+        if (timeline is null)
+            return new KeyNotFoundException($"Category with id {categoryId} not found");
+
+        var category = timeline.Categories.Single(c => c.CategoryId == categoryId);
+        timeline.Categories.Remove(category);
+
+        await _collection.ReplaceOneAsync(t => t.TimelineId == timeline.TimelineId, timeline);
         return Results.Success;
     }
 
@@ -184,7 +218,7 @@ public class TimelineProvider
         };
 
         timeline.Value.Episodes.Add(newEpisode);
-        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+        await _collection.ReplaceOneAsync(t => t.TimelineId == request.TimelineId, timeline.Value);
         return newEpisode;
     }
 
@@ -210,7 +244,13 @@ public class TimelineProvider
             Description = request.Episode.Description,
             Url = request.Episode.Url,
             UrlDescription = request.Episode.UrlDescription,
-            EpisodeType = request.Episode.EpisodeType,
+            // Derived from the dates, exactly as on insert. Trusting the client here let an
+            // episode edited down to a single day stay typed as an Era, so it drew as a bar
+            // instead of the callout an identical new episode would have got.
+            EpisodeType = !request.Episode.Indefinite
+                          && request.Episode.Start.Equals(request.Episode.End)
+                ? EpisodeType.Incident
+                : EpisodeType.Era,
             StartPrecision = request.Episode.StartPrecision,
             Start = request.Episode.Start,
             EndPrecision = request.Episode.EndPrecision,
@@ -222,7 +262,7 @@ public class TimelineProvider
         timeline.Value.Episodes.Add(updatedEpisode);
 
         await _collection
-            .UpdateOneAsync(t => t.TimelineId == request.TimelineId, timeline);
+            .ReplaceOneAsync(t => t.TimelineId == request.TimelineId, timeline.Value);
         return Results.Success;
     }
 }

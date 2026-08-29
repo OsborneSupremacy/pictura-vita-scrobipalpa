@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ApiTimeline } from '../api/types';
+import type { ApiEpisode, ApiTimeline } from '../api/types';
 import { toLayoutCategory, toLayoutEpisode } from '../api/adapter';
 import {
   buildLayout,
@@ -15,14 +15,17 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
 import { Band } from './Band';
 import { DetailPanel, type Anchor } from './DetailPanel';
+import { EpisodeDialog } from './EpisodeDialog';
 import { FilterControls } from './FilterControls';
 
 interface Props {
   timeline: ApiTimeline;
   today: DayNumber;
+  /** Called after an edit lands, so the owner can refetch. */
+  onChanged: () => void;
 }
 
-export function TimelineView({ timeline, today }: Props) {
+export function TimelineView({ timeline, today, onChanged }: Props) {
   const [surfaceRef, width] = useElementWidth<HTMLDivElement>();
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<{ floor: DayNumber; ceiling: DayNumber } | null>(null);
@@ -32,6 +35,7 @@ export function TimelineView({ timeline, today }: Props) {
   // Tracked as hidden rather than visible so a category added later shows up by default.
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
+  const [editing, setEditing] = useState<ApiEpisode | null>(null);
 
   // Anchor coordinates are taken relative to the timeline container rather than the
   // viewport, so the panel stays attached to its item as the page scrolls.
@@ -189,6 +193,22 @@ export function TimelineView({ timeline, today }: Props) {
           today={today}
           onClose={() => setSelected(null)}
           onZoom={onZoom}
+          onEdit={episodeToEdit => {
+            setSelected(null);
+            setEditing(episodeToEdit);
+          }}
+        />
+      )}
+
+      {editing && (
+        <EpisodeDialog
+          timeline={timeline}
+          episode={editing}
+          onSaved={() => {
+            setEditing(null);
+            onChanged();
+          }}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>

@@ -18,6 +18,19 @@ public class DataStoreFixture : IDisposable
         .AsQueryable()
         .ToList();
 
+    /// <summary>
+    /// Reads the timelines back through a *second* store over the same file.
+    ///
+    /// The usual accessor reads the live in-memory collection, which shows changes that were
+    /// only ever made to the cached objects and never written. Opening the file again is the
+    /// only way to prove a write actually reached disk.
+    /// </summary>
+    public List<Timeline> GetTimelinesFromDisk()
+    {
+        using var reopened = new DataStore(_tempFile);
+        return reopened.GetCollection<Timeline>().AsQueryable().ToList();
+    }
+
     public DataStoreFixture()
     {
         _tempFile = Path.Combine(Path.GetTempPath(), $"-timeline-data-{Guid.CreateVersion7()}.json");

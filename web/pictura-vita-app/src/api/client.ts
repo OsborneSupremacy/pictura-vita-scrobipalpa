@@ -1,4 +1,11 @@
-import type { ApiTimeline, ApiTimelineSummary, UpdateTimelineInfoRequest } from './types';
+import type {
+  ApiTimeline,
+  ApiTimelineSummary,
+  InsertCategoryRequest,
+  UpdateCategoryRequest,
+  UpdateEpisodeRequest,
+  UpdateTimelineInfoRequest
+} from './types';
 
 // Defaults to the dev-server proxy (see vite.config.ts) so the browser stays same-origin.
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
@@ -37,14 +44,15 @@ async function get<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function put(path: string, body: unknown): Promise<void> {
+async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<void> {
   let response: Response;
 
   try {
     response = await fetch(`${baseUrl}${path}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method,
+      ...(body === undefined
+        ? {}
+        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     });
   } catch {
     throw new ApiUnreachableError();
@@ -67,7 +75,7 @@ async function put(path: string, body: unknown): Promise<void> {
     }
   }
 
-  throw new Error(`PUT ${path} failed: ${response.status} ${response.statusText}`);
+  throw new Error(`${method} ${path} failed: ${response.status} ${response.statusText}`);
 }
 
 export const api = {
@@ -75,5 +83,11 @@ export const api = {
   timelines: () => get<ApiTimeline[]>('/timelines'),
   timeline: (id: string) => get<ApiTimeline>(`/timeline/${id}`),
   randomTimeline: () => get<ApiTimeline>('/timeline/random'),
-  updateTimelineInfo: (request: UpdateTimelineInfoRequest) => put('/timeline', request)
+  updateTimelineInfo: (request: UpdateTimelineInfoRequest) => send('PUT', '/timeline', request),
+
+  insertCategory: (request: InsertCategoryRequest) => send('POST', '/category', request),
+  updateCategory: (request: UpdateCategoryRequest) => send('PUT', '/category', request),
+  deleteCategory: (categoryId: string) => send('DELETE', `/category/${categoryId}`),
+
+  updateEpisode: (request: UpdateEpisodeRequest) => send('PUT', '/episode', request)
 };

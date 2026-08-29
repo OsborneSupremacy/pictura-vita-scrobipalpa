@@ -5,6 +5,7 @@ import { toDayNumber } from './layout';
 import { TimelineView } from './components/TimelineView';
 import { ProfileMenu } from './components/ProfileMenu';
 import { TimelineInfoDialog } from './components/TimelineInfoDialog';
+import { CategoryDialog } from './components/CategoryDialog';
 
 /**
  * Resolved once per mount so that a long-lived tab does not silently re-lay-out at midnight,
@@ -17,6 +18,7 @@ export default function App() {
   const [timeline, setTimeline] = useState<ApiTimeline | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
+  const [editingCategories, setEditingCategories] = useState(false);
 
   useEffect(() => {
     api
@@ -75,6 +77,9 @@ export default function App() {
             <button type="button" className="link" onClick={() => setEditingInfo(true)}>
               Edit timeline info
             </button>
+            <button type="button" className="link" onClick={() => setEditingCategories(true)}>
+              Categories
+            </button>
           </p>
 
           {editingInfo && (
@@ -88,7 +93,24 @@ export default function App() {
               onClose={() => setEditingInfo(false)}
             />
           )}
-          <TimelineView timeline={timeline} today={today} />
+
+          {editingCategories && (
+            <CategoryDialog
+              timeline={timeline}
+              // Categories are created server-side with ids we do not know, so refetch
+              // rather than trying to reconstruct the collection locally.
+              onSaved={() => {
+                setEditingCategories(false);
+                void select(timeline.timelineId);
+              }}
+              onClose={() => setEditingCategories(false)}
+            />
+          )}
+          <TimelineView
+            timeline={timeline}
+            today={today}
+            onChanged={() => void select(timeline.timelineId)}
+          />
         </>
       )}
     </main>
