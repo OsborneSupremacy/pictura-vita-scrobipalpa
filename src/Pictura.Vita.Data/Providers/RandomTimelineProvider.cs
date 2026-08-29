@@ -91,7 +91,8 @@ public class RandomTimelineProvider
                 Person = person
             })
             .RuleFor(ti => ti.Start, person.Birth)
-            .RuleFor(ti => ti.End, person.Death);
+            .RuleFor(ti => ti.End, person.Death)
+            .RuleFor(ti => ti.Ongoing, person.Death == DateOnly.MaxValue);
 
         return timelineInfoFaker.Generate();
     }

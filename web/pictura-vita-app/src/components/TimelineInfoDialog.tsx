@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { SubjectType, type ApiTimeline, type ApiTimelineInfo } from '../api/types';
-import { MAX_DATE_ISO } from '../layout';
+import type { DayNumber } from '../layout';
+import { MAX_DATE_ISO, deriveWindow, toIso } from '../layout';
+import { toLayoutEpisode } from '../api/adapter';
 
 interface Props {
   timeline: ApiTimeline;
+  today: DayNumber;
   onSaved: (info: ApiTimelineInfo) => void;
   onClose: () => void;
 }
 
 interface Draft {
+  title: string;
+  subtitle: string;
+  start: string;
+  end: string;
+  ongoing: boolean;
   subjectType: number;
   name: string;
   personBirth: string;
@@ -19,7 +27,7 @@ interface Draft {
   orgName: string;
   orgStart: string;
   orgEnd: string;
-  ongoing: boolean;
+  orgOngoing: boolean;
   orgObfuscate: boolean;
 }
 
@@ -30,6 +38,11 @@ function toDraft(info: ApiTimelineInfo): Draft {
   const { person, organization, subjectType } = info.timelineSubject;
 
   return {
+    title: info.title,
+    subtitle: info.subtitle,
+    start: forInput(info.start),
+    end: forInput(info.end),
+    ongoing: info.ongoing || info.end === MAX_DATE_ISO,
     subjectType,
     name: person.nameParts.join(' '),
     personBirth: forInput(person.birth),
@@ -41,7 +54,7 @@ function toDraft(info: ApiTimelineInfo): Draft {
     orgName: organization.name,
     orgStart: forInput(organization.start),
     orgEnd: forInput(organization.end),
-    ongoing: organization.ongoing || organization.end === MAX_DATE_ISO,
+    orgOngoing: organization.ongoing || organization.end === MAX_DATE_ISO,
     orgObfuscate: organization.obfuscateDates
   };
 }
@@ -51,6 +64,11 @@ function toTimelineInfo(info: ApiTimelineInfo, draft: Draft): ApiTimelineInfo {
 
   return {
     ...info,
+    title: draft.title.trim(),
+    subtitle: draft.subtitle,
+    start: draft.start,
+    end: draft.ongoing ? MAX_DATE_ISO : draft.end,
+    ongoing: draft.ongoing,
     timelineSubject: {
       subjectType: draft.subjectType,
       person: {
@@ -65,8 +83,8 @@ function toTimelineInfo(info: ApiTimelineInfo, draft: Draft): ApiTimelineInfo {
         ...organization,
         name: draft.orgName,
         start: draft.orgStart,
-        end: draft.ongoing ? MAX_DATE_ISO : draft.orgEnd,
-        ongoing: draft.ongoing,
+        end: draft.orgOngoing ? MAX_DATE_ISO : draft.orgEnd,
+        ongoing: draft.orgOngoing,
         obfuscateDates: draft.orgObfuscate
       }
     }
@@ -78,6 +96,11 @@ function toTimelineInfo(info: ApiTimelineInfo, draft: Draft): ApiTimelineInfo {
  * JSON binding with an opaque message, long before any validator sees it.
  */
 function problemWith(draft: Draft): string | null {
+  if (!draft.title.trim()) return 'Give the timeline a title.';
+  if (!draft.start) return 'Give the timeline a start date.';
+  if (!draft.ongoing && !draft.end) return 'Give an end date, or mark the timeline as ongoing.';
+  if (!draft.ongoing && draft.end < draft.start) return 'The end date is before the start date.';
+
   if (draft.subjectType === SubjectType.Person) {
     if (!draft.name.trim()) return 'Give the person a name.';
     if (!draft.personBirth) return 'Give a date of birth.';
@@ -88,12 +111,12 @@ function problemWith(draft: Draft): string | null {
 
   if (!draft.orgName.trim()) return 'Give the organization a name.';
   if (!draft.orgStart) return 'Give a founding date.';
-  if (!draft.ongoing && !draft.orgEnd) return 'Give an end date, or mark the organization as still operating.';
-  if (!draft.ongoing && draft.orgEnd < draft.orgStart) return 'The end date is before the founding date.';
+  if (!draft.orgOngoing && !draft.orgEnd) return 'Give an end date, or mark the organization as still operating.';
+  if (!draft.orgOngoing && draft.orgEnd < draft.orgStart) return 'The end date is before the founding date.';
   return null;
 }
 
-export function SubjectDialog({ timeline, onSaved, onClose }: Props) {
+export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(() => toDraft(timeline.timelineInfo));
   const [saving, setSaving] = useState(false);
@@ -110,6 +133,18 @@ export function SubjectDialog({ timeline, onSaved, onClose }: Props) {
     setDraft(current => ({ ...current, [key]: value }));
 
   const isPerson = draft.subjectType === SubjectType.Person;
+
+  const fitToEpisodes = () => {
+    const { floor, ceiling } = deriveWindow(timeline.episodes.map(toLayoutEpisode), today);
+    const anyOngoing = timeline.episodes.some(episode => episode.indefinite);
+
+    setDraft(current => ({
+      ...current,
+      start: toIso(floor),
+      end: anyOngoing ? current.end : toIso(ceiling),
+      ongoing: anyOngoing
+    }));
+  };
 
   const problem = problemWith(draft);
 
@@ -134,12 +169,54 @@ export function SubjectDialog({ timeline, onSaved, onClose }: Props) {
   };
 
   return (
-    <dialog ref={dialog} className="subject-dialog" onClose={onClose} onCancel={onClose}>
+    <dialog ref={dialog} className="info-dialog" onClose={onClose} onCancel={onClose}>
       <form method="dialog" onSubmit={event => event.preventDefault()}>
         <header>
-          <h2>Timeline subject</h2>
+          <h2>Timeline info</h2>
           <button type="button" onClick={onClose} aria-label="Close">×</button>
         </header>
+
+        <div className="fields">
+          <label>
+            Title
+            <input value={draft.title} onChange={e => set('title', e.target.value)} />
+          </label>
+
+          <label>
+            Subtitle
+            <input value={draft.subtitle} onChange={e => set('subtitle', e.target.value)} />
+          </label>
+
+          <label>
+            Starts
+            <input type="date" value={draft.start} onChange={e => set('start', e.target.value)} />
+          </label>
+
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={draft.ongoing}
+              onChange={e => set('ongoing', e.target.checked)}
+            />
+            Ongoing (runs to today)
+          </label>
+
+          <label>
+            Ends
+            <input
+              type="date"
+              value={draft.end}
+              disabled={draft.ongoing}
+              onChange={e => set('end', e.target.value)}
+            />
+          </label>
+
+          {/* The bounds decide what is drawn, so there has to be a way to discover the
+              range the episodes actually occupy without reading the file. */}
+          <button type="button" className="link fit" onClick={fitToEpisodes}>
+            Fit to episodes
+          </button>
+        </div>
 
         <fieldset className="subject-type">
           <legend>This timeline is about</legend>
@@ -226,8 +303,8 @@ export function SubjectDialog({ timeline, onSaved, onClose }: Props) {
             <label className="check">
               <input
                 type="checkbox"
-                checked={draft.ongoing}
-                onChange={e => set('ongoing', e.target.checked)}
+                checked={draft.orgOngoing}
+                onChange={e => set('orgOngoing', e.target.checked)}
               />
               Still operating
             </label>
@@ -237,7 +314,7 @@ export function SubjectDialog({ timeline, onSaved, onClose }: Props) {
               <input
                 type="date"
                 value={draft.orgEnd}
-                disabled={draft.ongoing}
+                disabled={draft.orgOngoing}
                 onChange={e => set('orgEnd', e.target.value)}
               />
             </label>

@@ -4,7 +4,7 @@ import type { ApiTimeline, ApiTimelineSummary } from './api/types';
 import { toDayNumber } from './layout';
 import { TimelineView } from './components/TimelineView';
 import { ProfileMenu } from './components/ProfileMenu';
-import { SubjectDialog } from './components/SubjectDialog';
+import { TimelineInfoDialog } from './components/TimelineInfoDialog';
 
 /**
  * Resolved once per mount so that a long-lived tab does not silently re-lay-out at midnight,
@@ -16,7 +16,7 @@ export default function App() {
   const [summaries, setSummaries] = useState<ApiTimelineSummary[]>([]);
   const [timeline, setTimeline] = useState<ApiTimeline | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editingSubject, setEditingSubject] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
 
   useEffect(() => {
     api
@@ -72,19 +72,20 @@ export default function App() {
           <p className="timeline-title">
             <strong>{timeline.timelineInfo.title}</strong>
             {timeline.timelineInfo.subtitle && <span className="muted"> — {timeline.timelineInfo.subtitle}</span>}
-            <button type="button" className="link" onClick={() => setEditingSubject(true)}>
-              Edit subject
+            <button type="button" className="link" onClick={() => setEditingInfo(true)}>
+              Edit timeline info
             </button>
           </p>
 
-          {editingSubject && (
-            <SubjectDialog
+          {editingInfo && (
+            <TimelineInfoDialog
               timeline={timeline}
+              today={today}
               onSaved={info => {
                 setTimeline({ ...timeline, timelineInfo: info });
-                setEditingSubject(false);
+                setEditingInfo(false);
               }}
-              onClose={() => setEditingSubject(false)}
+              onClose={() => setEditingInfo(false)}
             />
           )}
           <TimelineView timeline={timeline} today={today} />

@@ -53,7 +53,7 @@ main { padding: 16px 20px 40px; }
 
 .app-header h1 { font-size: 20px; margin: 0; }
 
-/* ---- Subject dialog ---- */
+/* ---- Timeline info dialog ---- */
 
 .link {
   margin-left: 10px;
@@ -67,7 +67,7 @@ main { padding: 16px 20px 40px; }
   cursor: pointer;
 }
 
-.subject-dialog {
+.info-dialog {
   width: min(440px, calc(100vw - 32px));
   padding: 0;
   border: 1px solid var(--line);
@@ -76,19 +76,19 @@ main { padding: 16px 20px 40px; }
   background: var(--surface);
 }
 
-.subject-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+.info-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
 
-.subject-dialog form { padding: 16px 18px 14px; }
+.info-dialog form { padding: 16px 18px 14px; }
 
-.subject-dialog header {
+.info-dialog header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
 }
 
-.subject-dialog h2 { margin: 0 0 10px; font-size: 16px; }
+.info-dialog h2 { margin: 0 0 10px; font-size: 16px; }
 
-.subject-dialog header button {
+.info-dialog header button {
   border: 0;
   background: none;
   font-size: 20px;
@@ -140,7 +140,7 @@ main { padding: 16px 20px 40px; }
 
 .fields input:disabled { background: var(--page); color: var(--muted); }
 
-.subject-dialog .bad {
+.info-dialog .bad {
   margin: 12px 0 0;
   padding: 8px 10px;
   font-size: 13px;
@@ -150,14 +150,14 @@ main { padding: 16px 20px 40px; }
   border-radius: 4px;
 }
 
-.subject-dialog footer {
+.info-dialog footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
 }
 
-.subject-dialog footer button {
+.info-dialog footer button {
   padding: 6px 14px;
   font: inherit;
   border: 1px solid var(--line);
@@ -166,13 +166,13 @@ main { padding: 16px 20px 40px; }
   cursor: pointer;
 }
 
-.subject-dialog footer button.primary {
+.info-dialog footer button.primary {
   background: #1d4ed8;
   border-color: #1d4ed8;
   color: #fff;
 }
 
-.subject-dialog footer button:disabled { opacity: 0.6; cursor: default; }
+.info-dialog footer button:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- Profile menu ---- */
 

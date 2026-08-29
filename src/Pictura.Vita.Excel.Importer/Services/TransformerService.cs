@@ -73,14 +73,18 @@ internal static class TransformerService
         // The window's end comes from the data: the latest real end, pulled out to today if
         // anything is still running. Previously this was hard-coded to DateOnly.MaxValue,
         // which put the 9999-12-31 sentinel into the timeline's own declared bounds.
+        // A timeline with anything still running has no fixed end: record that it is ongoing
+        // rather than freezing today's date into the file, which would be wrong tomorrow.
+        var ongoing = episodes.Any(episode => episode.Indefinite);
+
         var latestEnd = episodes
             .Where(episode => !episode.Indefinite)
             .Select(episode => episode.End)
             .DefaultIfEmpty(today)
             .Max();
 
-        var end = episodes.Any(episode => episode.Indefinite) && latestEnd < today ? today : latestEnd;
-        if (end < start) end = start;
+        var end = ongoing ? DateOnly.MaxValue : latestEnd;
+        if (!ongoing && end < start) end = start;
 
         return new Timeline
         {
@@ -109,7 +113,8 @@ internal static class TransformerService
                     }
                 },
                 Start = start,
-                End = end
+                End = end,
+                Ongoing = ongoing
             },
             Episodes = episodes,
             Categories = categories

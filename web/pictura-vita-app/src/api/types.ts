@@ -75,7 +75,9 @@ export interface ApiTimelineInfo {
     person: ApiPerson;
   };
   start: string;
+  /** 9999-12-31 when `ongoing`. */
   end: string;
+  ongoing: boolean;
 }
 
 export interface ApiTimeline {

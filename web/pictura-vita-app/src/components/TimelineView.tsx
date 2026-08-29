@@ -4,8 +4,8 @@ import { toLayoutCategory, toLayoutEpisode } from '../api/adapter';
 import {
   buildLayout,
   Confidentiality,
-  deriveWindow,
-  filterByConfidentiality,
+  MAX_DATE_ISO,
+  toDayNumber,
   toIso,
   type DayNumber,
   type ResolvedConfidentiality,
@@ -61,13 +61,19 @@ export function TimelineView({ timeline, today }: Props) {
     [timeline]
   );
 
-  // The window follows the confidentiality filter, so hiding private episodes rescales to
-  // what is left — the original refetched for this. It deliberately does *not* follow the
-  // category toggles, which only hide bands, so ticking a box never moves the axis.
+  // The timeline's own start and end are authoritative: they are what "Edit timeline info"
+  // changes, and an ongoing timeline runs to today rather than to a date frozen at import.
+  // Episodes outside the window are dropped by the layout, exactly as the original's
+  // configurable floor and ceiling did.
   const window = useMemo(() => {
     if (zoom) return zoom;
-    return deriveWindow(filterByConfidentiality(episodes, categories, maxConfidentiality), today);
-  }, [zoom, episodes, categories, maxConfidentiality, today]);
+
+    const { start, end, ongoing } = timeline.timelineInfo;
+    return {
+      floor: toDayNumber(start),
+      ceiling: ongoing || end === MAX_DATE_ISO ? today : toDayNumber(end)
+    };
+  }, [zoom, timeline, today]);
 
   const visibleCategoryIds = useMemo(
     () =>
