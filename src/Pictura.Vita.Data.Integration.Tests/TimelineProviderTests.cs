@@ -354,6 +354,46 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     }
 
     [Fact]
+    public async Task DeleteEpisodeAsync_RemovesTheEpisodeAndWritesThroughToTheFile()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var remaining = timeline.Episodes.Count - 1;
+        var categoriesBefore = timeline.Categories.Count;
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.DeleteEpisodeAsync(episode.EpisodeId);
+
+        // assert
+        result.IsSuccess.Should().BeTrue();
+
+        var onDisk = _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId);
+
+        onDisk.Episodes.Should().NotContain(e => e.EpisodeId == episode.EpisodeId);
+        onDisk.Episodes.Should().HaveCount(remaining);
+
+        // Deleting an episode must not disturb anything around it.
+        onDisk.Categories.Should().HaveCount(categoriesBefore);
+    }
+
+    [Fact]
+    public async Task DeleteEpisodeAsync_GivenUnknownEpisode_ReturnsNotFound()
+    {
+        // arrange
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.DeleteEpisodeAsync(Guid.CreateVersion7());
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
+    }
+
+    [Fact]
     public async Task DeleteCategoryAsync_GivenUnknownCategory_ReturnsNotFound()
     {
         // arrange

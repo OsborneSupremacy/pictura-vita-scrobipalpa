@@ -210,7 +210,7 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
           timeline={timeline}
           mode={dialogMode}
           today={today}
-          onSaved={() => {
+          onChanged={() => {
             setDialogMode(null);
             onChanged();
           }}

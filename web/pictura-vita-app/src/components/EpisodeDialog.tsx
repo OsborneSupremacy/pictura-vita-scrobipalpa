@@ -15,7 +15,8 @@ interface Props {
   timeline: ApiTimeline;
   mode: EpisodeDialogMode;
   today: DayNumber;
-  onSaved: () => void;
+  /** Fired after the episode is saved or deleted, so the owner can refetch. */
+  onChanged: () => void;
   onClose: () => void;
 }
 
@@ -82,11 +83,13 @@ function problemWith(draft: Draft): string | null {
   return null;
 }
 
-export function EpisodeDialog({ timeline, mode, today, onSaved, onClose }: Props) {
+export function EpisodeDialog({ timeline, mode, today, onChanged, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(() => toDraft(mode, today));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Deleting is irreversible, so it takes a second, deliberate click.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     const element = dialog.current;
@@ -143,10 +146,26 @@ export function EpisodeDialog({ timeline, mode, today, onSaved, onClose }: Props
           episode: { ...mode.episode, ...fields }
         });
       }
-      onSaved();
+      onChanged();
     } catch (problemSaving: unknown) {
       setError(problemSaving instanceof Error ? problemSaving.message : String(problemSaving));
       setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (mode.kind !== 'edit') return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await api.deleteEpisode(mode.episode.episodeId);
+      onChanged();
+    } catch (problemDeleting: unknown) {
+      setError(problemDeleting instanceof Error ? problemDeleting.message : String(problemDeleting));
+      setSaving(false);
+      setConfirmingDelete(false);
     }
   };
 
@@ -254,19 +273,47 @@ export function EpisodeDialog({ timeline, mode, today, onSaved, onClose }: Props
 
         {(error ?? problem) && <p className="bad">{error ?? problem}</p>}
 
+        {confirmingDelete && (
+          <p className="warn">
+            Delete <strong>{mode.kind === 'edit' ? mode.episode.title : ''}</strong> permanently?
+            This removes it from the data file. Unlike removing a category, it cannot be undone
+            from inside the app — only by restoring an export.
+          </p>
+        )}
+
         <footer>
+          {mode.kind === 'edit' &&
+            (confirmingDelete ? (
+              <>
+                <button type="button" className="danger" onClick={() => void remove()} disabled={saving}>
+                  {saving ? 'Deleting…' : 'Delete permanently'}
+                </button>
+                <button type="button" onClick={() => setConfirmingDelete(false)} disabled={saving}>
+                  Keep
+                </button>
+              </>
+            ) : (
+              <button type="button" className="danger-quiet" onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </button>
+            ))}
+
+          <span className="spacer" />
+
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="button"
-            className="primary"
-            onClick={() => void save()}
-            disabled={saving || problem !== null}
-            title={problem ?? undefined}
-          >
-            {saving ? 'Saving…' : mode.kind === 'add' ? 'Add' : 'Save'}
-          </button>
+          {!confirmingDelete && (
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void save()}
+              disabled={saving || problem !== null}
+              title={problem ?? undefined}
+            >
+              {saving ? 'Saving…' : mode.kind === 'add' ? 'Add' : 'Save'}
+            </button>
+          )}
         </footer>
       </form>
     </dialog>

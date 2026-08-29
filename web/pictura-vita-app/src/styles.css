@@ -326,6 +326,20 @@ main { padding: 16px 20px 40px; }
   font: inherit;
 }
 
+.info-dialog footer .spacer { flex: 1; }
+
+.info-dialog footer button.danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.info-dialog footer button.danger-quiet {
+  color: #b91c1c;
+  border-color: var(--line);
+  background: var(--surface);
+}
+
 /* ---- Profile menu ---- */
 
 /* Pushed to the far right; the rest of the header stays left-aligned. */

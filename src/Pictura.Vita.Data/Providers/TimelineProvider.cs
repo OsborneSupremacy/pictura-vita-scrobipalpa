@@ -222,6 +222,28 @@ public class TimelineProvider
         return newEpisode;
     }
 
+    /// <summary>
+    /// Permanently removes an episode from its timeline.
+    ///
+    /// Unlike removing a category, which only stops episodes being drawn, this discards the
+    /// record. Nothing else refers to an episode, so there is nothing left dangling — and
+    /// nothing to recover it from either, short of a backup.
+    /// </summary>
+    public async Task<Result> DeleteEpisodeAsync(Guid episodeId)
+    {
+        var timeline = (await GetAllAsync())
+            .SingleOrDefault(t => t.Episodes.Any(e => e.EpisodeId == episodeId));
+
+        if (timeline is null)
+            return new KeyNotFoundException($"Episode with id {episodeId} not found");
+
+        var episode = timeline.Episodes.Single(e => e.EpisodeId == episodeId);
+        timeline.Episodes.Remove(episode);
+
+        await _collection.ReplaceOneAsync(t => t.TimelineId == timeline.TimelineId, timeline);
+        return Results.Success;
+    }
+
     public async Task<Result> UpdateEpisodeAsync(UpdateEpisodeRequest request)
     {
         var timeline = await GetAsync(request.TimelineId);

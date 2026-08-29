@@ -247,5 +247,17 @@ app.MapPut("/episode", async (
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
+app.MapDelete("/episode/{id:guid}", async ([FromRoute]Guid id) =>
+    {
+        var deleteResult = await timelineProvider.DeleteEpisodeAsync(id);
+
+        return deleteResult is { IsFaulted: true, Exception: KeyNotFoundException }
+            ? Results.NotFound()
+            : Results.NoContent();
+    })
+    .WithDisplayName("Delete an episode")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
+
 app.Run();
 

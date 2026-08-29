@@ -91,5 +91,6 @@ export const api = {
   deleteCategory: (categoryId: string) => send('DELETE', `/category/${categoryId}`),
 
   insertEpisode: (request: InsertEpisodeRequest) => send('POST', '/episode', request),
-  updateEpisode: (request: UpdateEpisodeRequest) => send('PUT', '/episode', request)
+  updateEpisode: (request: UpdateEpisodeRequest) => send('PUT', '/episode', request),
+  deleteEpisode: (episodeId: string) => send('DELETE', `/episode/${episodeId}`)
 };
