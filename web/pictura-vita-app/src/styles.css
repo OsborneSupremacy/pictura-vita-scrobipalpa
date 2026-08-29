@@ -225,10 +225,29 @@ main { padding: 16px 20px 40px; }
 
 .category-row {
   display: grid;
-  grid-template-columns: 1fr 120px auto;
+  grid-template-columns: auto 1fr 120px auto;
   gap: 8px;
   align-items: center;
 }
+
+.reorder { display: flex; gap: 2px; }
+
+.reorder button {
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.reorder button:hover:not(:disabled) { background: var(--page); }
+.reorder button:disabled { opacity: 0.35; cursor: default; }
 
 .category-row input,
 .category-row select {

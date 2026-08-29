@@ -10,6 +10,8 @@ interface Props {
 }
 
 interface Row {
+  /** Stable across reordering, so React keeps inputs attached to their own row. */
+  key: string;
   /** Empty for a category that has not been created yet. */
   categoryId: string;
   title: string;
@@ -25,7 +27,11 @@ const LEVELS = [
   { value: Confidentiality.OnlyMe, label: 'Only me' }
 ];
 
-const toRow = (category: ApiCategory): Row => ({ ...category, isNew: false });
+const toRow = (category: ApiCategory): Row => ({
+  ...category,
+  key: category.categoryId,
+  isNew: false
+});
 
 /**
  * Changes are staged rather than applied as they are typed.
@@ -60,11 +66,13 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
     setRows(current => [
       ...current,
       {
+        key: `new-${crypto.randomUUID()}`,
         categoryId: '',
         title: '',
         subtitle: '',
         confidentiality: Confidentiality.OnlyMe,
-        sortOrder: current.reduce((max, row) => Math.max(max, row.sortOrder), -1) + 1,
+        // Superseded on save by the row's position; only a placeholder until then.
+        sortOrder: current.length,
         isNew: true
       }
     ]);
@@ -78,6 +86,26 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
 
   const dropNewRow = (index: number) => setRows(current => current.filter((_, i) => i !== index));
 
+  /**
+   * Order is expressed by position in this list; the stored sortOrder is recomputed from it
+   * on save. That keeps the numbers contiguous instead of leaving gaps behind every
+   * removal, and means a move is just a swap rather than arithmetic on two records.
+   */
+  const move = (index: number, direction: -1 | 1) =>
+    setRows(current => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+
+      const next = [...current];
+      const moved = next[index];
+      const displaced = next[target];
+      if (!moved || !displaced) return current;
+
+      next[index] = displaced;
+      next[target] = moved;
+      return next;
+    });
+
   const blank = rows.some(row => !removing.has(row.categoryId) && !row.title.trim());
   const orphaned = totalOrphaned(timeline.episodes, removing);
 
@@ -90,20 +118,22 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
     setSaving(true);
     setError(null);
 
+    // Numbering runs over the rows that will survive, so removing one closes the gap it
+    // leaves rather than stranding an unused value.
+    const surviving = rows.filter(row => row.isNew || !removing.has(row.categoryId));
+
     try {
-      for (const row of rows) {
+      for (const [sortOrder, row] of surviving.entries()) {
         if (row.isNew) {
           await api.insertCategory({
             timelineId: timeline.timelineId,
             title: row.title.trim(),
             subtitle: row.subtitle,
             confidentiality: row.confidentiality,
-            sortOrder: row.sortOrder
+            sortOrder
           });
           continue;
         }
-
-        if (removing.has(row.categoryId)) continue;
 
         const before = original.get(row.categoryId);
         const changed =
@@ -111,7 +141,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
           (before.title !== row.title.trim() ||
             before.subtitle !== row.subtitle ||
             before.confidentiality !== row.confidentiality ||
-            before.sortOrder !== row.sortOrder);
+            before.sortOrder !== sortOrder);
 
         if (changed) {
           await api.updateCategory({
@@ -121,7 +151,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
               title: row.title.trim(),
               subtitle: row.subtitle,
               confidentiality: row.confidentiality,
-              sortOrder: row.sortOrder
+              sortOrder
             }
           });
         }
@@ -157,8 +187,29 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
               : null;
 
             return (
-              <li key={row.categoryId || `new-${index}`} className={marked ? 'marked' : ''}>
+              <li key={row.key} className={marked ? 'marked' : ''}>
                 <div className="category-row">
+                  <span className="reorder">
+                    <button
+                      type="button"
+                      onClick={() => move(index, -1)}
+                      disabled={index === 0 || marked}
+                      title="Move up"
+                      aria-label={`Move ${row.title || 'this category'} up`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(index, 1)}
+                      disabled={index === rows.length - 1 || marked}
+                      title="Move down"
+                      aria-label={`Move ${row.title || 'this category'} down`}
+                    >
+                      ↓
+                    </button>
+                  </span>
+
                   <input
                     value={row.title}
                     placeholder="Category name"
