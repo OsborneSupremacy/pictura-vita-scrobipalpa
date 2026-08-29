@@ -42,6 +42,23 @@ public class TimelineProvider
     public async Task InsertAsync(Timeline timeline) =>
         await _collection.InsertOneAsync(timeline);
 
+    /// <summary>
+    /// Inserts the timeline, or replaces the existing one with the same id.
+    /// Re-running an import should refresh a timeline, not stack up another copy of it.
+    /// </summary>
+    /// <returns>True when an existing timeline was replaced.</returns>
+    public async Task<bool> UpsertAsync(Timeline timeline)
+    {
+        var existing = _collection.AsQueryable().Any(t => t.TimelineId == timeline.TimelineId);
+
+        if (existing)
+            await _collection.ReplaceOneAsync(t => t.TimelineId == timeline.TimelineId, timeline);
+        else
+            await _collection.InsertOneAsync(timeline);
+
+        return existing;
+    }
+
     public async Task<Result> UpdateTimelineInfoAsync(Timeline timelineIn)
     {
         var dbTimeline = await GetAsync(timelineIn.TimelineId);

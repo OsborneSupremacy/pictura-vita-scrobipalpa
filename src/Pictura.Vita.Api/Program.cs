@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Pictura.Vita.Api.Validators;
 using Scalar.AspNetCore;
 
-DotEnv.Load();
+// Do not clobber variables already set in the environment: an explicit value from the
+// shell must win over .env, or you cannot safely point this at a scratch file.
+DotEnv.Load(new DotEnvOptions(overwriteExistingVars: false));
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +24,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(options =>
     {
         options
-            .WithTitle("Pictura Vita API")
-            .WithDarkMode(false);
+            .WithTitle("Pictura Vita API");
     });
 }
 
