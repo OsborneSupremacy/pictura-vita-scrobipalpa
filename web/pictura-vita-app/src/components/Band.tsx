@@ -3,7 +3,7 @@ import type { CategoryBand, Rail, TimeItem } from '../layout';
 interface Props {
   band: CategoryBand;
   selectedKey: string | null;
-  onSelect: (item: TimeItem) => void;
+  onSelect: (item: TimeItem, element: HTMLElement) => void;
 }
 
 function itemClassName(item: TimeItem, selected: boolean): string {
@@ -31,7 +31,7 @@ function ItemBox({
 }: {
   item: TimeItem;
   selected: boolean;
-  onSelect: (item: TimeItem) => void;
+  onSelect: (item: TimeItem, element: HTMLElement) => void;
 }) {
   if (item.kind === 'placeholder') {
     return <div className="placeholder" style={{ width: `${item.width}px` }} />;
@@ -43,7 +43,7 @@ function ItemBox({
       className={itemClassName(item, selected)}
       style={{ width: `${item.width}px` }}
       title={item.title}
-      onClick={() => onSelect(item)}
+      onClick={event => onSelect(item, event.currentTarget)}
     >
       {!item.sliver && (
         <span className="labels">
@@ -64,7 +64,7 @@ function RailRow({
   rail: Rail;
   arrow?: 'up' | 'down';
   selectedKey: string | null;
-  onSelect: (item: TimeItem) => void;
+  onSelect: (item: TimeItem, element: HTMLElement) => void;
 }) {
   return (
     <div className={`rail rail-${rail.kind}`}>
