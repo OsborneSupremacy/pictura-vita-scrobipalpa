@@ -53,6 +53,58 @@ main { padding: 16px 20px 40px; }
 
 .app-header h1 { font-size: 20px; margin: 0; }
 
+/* ---- Profile menu ---- */
+
+/* Pushed to the far right; the rest of the header stays left-aligned. */
+.profile { position: relative; margin-left: auto; }
+
+.profile > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.profile > summary::-webkit-details-marker { display: none; }
+.profile > summary:hover { color: var(--ink); border-color: var(--muted); }
+.profile[open] > summary { color: var(--ink); border-color: var(--muted); }
+
+.profile-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 280px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.profile-panel button {
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--page);
+  cursor: pointer;
+}
+
+.profile-panel button:disabled { cursor: default; opacity: 0.6; }
+
+.profile-panel p { margin: 8px 0 0; font-size: 12px; }
+.profile-panel .ok { color: #15803d; }
+.profile-panel .bad { color: #b91c1c; }
+
 .timeline-title { margin: 0 0 12px; }
 
 .muted { color: var(--muted); font-weight: normal; }

@@ -3,6 +3,7 @@ import { api } from './api/client';
 import type { ApiTimeline, ApiTimelineSummary } from './api/types';
 import { toDayNumber } from './layout';
 import { TimelineView } from './components/TimelineView';
+import { ProfileMenu } from './components/ProfileMenu';
 
 /**
  * Resolved once per mount so that a long-lived tab does not silently re-lay-out at midnight,
@@ -50,6 +51,8 @@ export default function App() {
             ))}
           </select>
         )}
+
+        <ProfileMenu today={today} />
       </header>
 
       {error && (

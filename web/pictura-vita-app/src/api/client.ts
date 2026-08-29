@@ -39,6 +39,7 @@ async function get<T>(path: string): Promise<T> {
 
 export const api = {
   timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
+  timelines: () => get<ApiTimeline[]>('/timelines'),
   timeline: (id: string) => get<ApiTimeline>(`/timeline/${id}`),
   randomTimeline: () => get<ApiTimeline>('/timeline/random')
 };
