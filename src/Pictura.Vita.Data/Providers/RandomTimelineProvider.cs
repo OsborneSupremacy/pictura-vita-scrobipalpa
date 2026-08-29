@@ -72,7 +72,8 @@ public class RandomTimelineProvider
             .RuleFor(p => p.BirthPrecision, DatePrecision.Day)
             .RuleFor(p => p.Birth, _ => DateOnly.FromDateTime(_faker.Date.Past(100)))
             .RuleFor(p => p.DeathPrecision, DatePrecision.Day)
-            .RuleFor(p => p.Death, DateOnly.MaxValue);
+            .RuleFor(p => p.Death, DateOnly.MaxValue)
+            .RuleFor(p => p.Living, true);
 
         return personFaker.Generate();
     }

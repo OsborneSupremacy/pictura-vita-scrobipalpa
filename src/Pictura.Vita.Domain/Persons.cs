@@ -9,6 +9,7 @@ public static class Persons
         BirthPrecision = DatePrecision.Day,
         Birth = DateOnly.MinValue,
         DeathPrecision = DatePrecision.Day,
-        Death = DateOnly.MaxValue
+        Death = DateOnly.MaxValue,
+        Living = true
     };
 }

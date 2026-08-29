@@ -1,4 +1,4 @@
-import type { ApiTimeline, ApiTimelineSummary } from './types';
+import type { ApiTimeline, ApiTimelineSummary, UpdateTimelineInfoRequest } from './types';
 
 // Defaults to the dev-server proxy (see vite.config.ts) so the browser stays same-origin.
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
@@ -37,9 +37,43 @@ async function get<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function put(path: string, body: unknown): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch {
+    throw new ApiUnreachableError();
+  }
+
+  if (response.ok) return;
+
+  if (response.status === 502) {
+    const unreachable = await response.json().catch(() => null);
+    if (unreachable?.error === 'api-unreachable') throw new ApiUnreachableError(unreachable.target);
+  }
+
+  // FluentValidation failures come back as a ValidationProblemDetails; surface the
+  // messages rather than a bare status code, since they say what to fix.
+  if (response.status === 400) {
+    const problem = await response.json().catch(() => null);
+    const errors = problem?.errors as Record<string, string[]> | undefined;
+    if (errors) {
+      throw new Error(Object.values(errors).flat().join(' '));
+    }
+  }
+
+  throw new Error(`PUT ${path} failed: ${response.status} ${response.statusText}`);
+}
+
 export const api = {
   timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
   timelines: () => get<ApiTimeline[]>('/timelines'),
   timeline: (id: string) => get<ApiTimeline>(`/timeline/${id}`),
-  randomTimeline: () => get<ApiTimeline>('/timeline/random')
+  randomTimeline: () => get<ApiTimeline>('/timeline/random'),
+  updateTimelineInfo: (request: UpdateTimelineInfoRequest) => put('/timeline', request)
 };

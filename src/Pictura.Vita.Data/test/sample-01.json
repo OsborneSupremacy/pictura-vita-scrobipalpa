@@ -13,7 +13,8 @@
             "startPrecision": 0,
             "start": "0001-01-01",
             "endPrecision": 0,
-            "end": "9999-12-31"
+            "end": "9999-12-31",
+            "ongoing": true
           },
           "person": {
             "nameParts": [
@@ -24,7 +25,8 @@
             "birthPrecision": 0,
             "birth": "1930-12-15",
             "deathPrecision": 0,
-            "death": "9999-12-31"
+            "death": "9999-12-31",
+            "living": true
           }
         },
         "start": "1930-12-15",

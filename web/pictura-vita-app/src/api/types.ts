@@ -50,7 +50,9 @@ export interface ApiPerson {
   birthPrecision: number;
   birth: string;
   deathPrecision: number;
+  /** 9999-12-31 when `living`. */
   death: string;
+  living: boolean;
 }
 
 export interface ApiOrganization {
@@ -59,7 +61,9 @@ export interface ApiOrganization {
   startPrecision: number;
   start: string;
   endPrecision: number;
+  /** 9999-12-31 when `ongoing`. */
   end: string;
+  ongoing: boolean;
 }
 
 export interface ApiTimelineInfo {
@@ -84,4 +88,9 @@ export interface ApiTimeline {
 export interface ApiTimelineSummary {
   timelineId: string;
   title: string;
+}
+
+export interface UpdateTimelineInfoRequest {
+  timelineId: string;
+  timelineInfo: ApiTimelineInfo;
 }

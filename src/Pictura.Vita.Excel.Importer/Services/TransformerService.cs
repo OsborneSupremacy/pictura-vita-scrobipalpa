@@ -103,7 +103,9 @@ internal static class TransformerService
                         // simply the first thing the person happened to record.
                         Birth = DateOnly.MinValue,
                         DeathPrecision = DatePrecision.Day,
-                        Death = DateOnly.MaxValue
+                        // The spreadsheet says nothing about a death date either.
+                        Death = DateOnly.MaxValue,
+                        Living = true
                     }
                 },
                 Start = start,

@@ -80,12 +80,56 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
 
         // act
-        await sut.UpdateTimelineInfoAsync(updatedTimeline);
+        await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
+        {
+            TimelineId = timelineIn.TimelineId,
+            TimelineInfo = updatedTimeline.TimelineInfo
+        });
 
         var timelineOut = (await sut.GetAsync(timelineIn.TimelineId)).Value;
 
         // assert
         timelineOut.Should().BeEquivalentTo(updatedTimeline);
+    }
+
+    [Fact]
+    public async Task UpdateTimelineInfoAsync_LeavesEpisodesAndCategoriesUntouched()
+    {
+        // arrange
+        var timelineIn = _dataStoreFixture.GetTimelines().First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act - editing the subject must not disturb the timeline's contents
+        await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
+        {
+            TimelineId = timelineIn.TimelineId,
+            TimelineInfo = timelineIn.TimelineInfo with { Title = "Renamed" }
+        });
+
+        var timelineOut = (await sut.GetAsync(timelineIn.TimelineId)).Value;
+
+        // assert
+        timelineOut.TimelineInfo.Title.Should().Be("Renamed");
+        timelineOut.Episodes.Should().BeEquivalentTo(timelineIn.Episodes);
+        timelineOut.Categories.Should().BeEquivalentTo(timelineIn.Categories);
+    }
+
+    [Fact]
+    public async Task UpdateTimelineInfoAsync_GivenUnknownTimeline_ReturnsNotFound()
+    {
+        // arrange
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var result = await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
+        {
+            TimelineId = Guid.CreateVersion7(),
+            TimelineInfo = _dataStoreFixture.AutoFixture.Create<TimelineInfo>()
+        });
+
+        // assert
+        result.IsSuccess.Should().BeFalse();
+        result.Exception.Should().BeOfType<KeyNotFoundException>();
     }
 
     [Fact]

@@ -9,6 +9,7 @@ public static class Organizations
         StartPrecision = DatePrecision.Day,
         Start = DateOnly.MinValue,
         EndPrecision = DatePrecision.Day,
-        End = DateOnly.MaxValue
+        End = DateOnly.MaxValue,
+        Ongoing = true
     };
 }

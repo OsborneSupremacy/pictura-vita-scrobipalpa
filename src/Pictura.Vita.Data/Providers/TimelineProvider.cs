@@ -59,19 +59,19 @@ public class TimelineProvider
         return existing;
     }
 
-    public async Task<Result> UpdateTimelineInfoAsync(Timeline timelineIn)
+    public async Task<Result> UpdateTimelineInfoAsync(UpdateTimelineInfoRequest request)
     {
-        var dbTimeline = await GetAsync(timelineIn.TimelineId);
+        var dbTimeline = await GetAsync(request.TimelineId);
 
         if(!dbTimeline.IsSuccess)
             return dbTimeline.Exception;
 
         var timelineOut = dbTimeline.Value with
         {
-            TimelineInfo = timelineIn.TimelineInfo
+            TimelineInfo = request.TimelineInfo
         };
 
-        await _collection.UpdateOneAsync(t => t.TimelineId == timelineIn.TimelineId, timelineOut);
+        await _collection.UpdateOneAsync(t => t.TimelineId == request.TimelineId, timelineOut);
         return Results.Success;
     }
 

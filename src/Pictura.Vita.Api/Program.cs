@@ -13,7 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>();
+// includeInternalTypes: the validators are internal, and the scanner skips internal types
+// by default. Without this every endpoint that resolves a validator fails at request time
+// with "No service for type ... has been registered".
+builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>(includeInternalTypes: true);
 
 var app = builder.Build();
 
@@ -89,13 +92,14 @@ app.MapGet("/timeline/random", () =>
     .WithDisplayName("Get a random timeline")
     .Produces<Timeline>();
 
+// Takes only the information being changed. It previously accepted a whole Timeline, which
+// meant sending every episode back to the server to rename the subject.
 app.MapPut("/timeline", async (
-        [FromServices]TimelineInfoValidator validator,
-        [FromBody]Timeline request
+        [FromServices]UpdateTimelineInfoRequestValidator validator,
+        [FromBody]UpdateTimelineInfoRequest request
         ) =>
     {
-        var validationResult = await validator
-            .ValidateAsync(request.TimelineInfo);
+        var validationResult = await validator.ValidateAsync(request);
 
         if (!validationResult.IsValid)
             return Results.ValidationProblem(validationResult.ToDictionary());
