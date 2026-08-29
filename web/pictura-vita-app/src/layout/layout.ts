@@ -83,6 +83,7 @@ function buildEraItem(episode: LayoutEpisode, scale: Scale): TimeItem {
     title: episode.title,
     subtitle: episode.subtitle,
     anchor: null,
+    anchorOffset: 0,
     start,
     end,
     width,
@@ -92,6 +93,7 @@ function buildEraItem(episode: LayoutEpisode, scale: Scale): TimeItem {
     onFloor: false,
     onCeiling: false,
     supplementOf: null,
+    targetRailIndex: null,
     reference: false
   };
 }
@@ -105,7 +107,8 @@ function buildIncidentItem(
   episode: LayoutEpisode,
   anchor: DayNumber,
   scale: Scale,
-  supplementOf: string | null
+  supplementOf: string | null,
+  targetRailIndex: number | null
 ): TimeItem {
   const half = Math.floor(scale.calloutDays / 2);
 
@@ -127,6 +130,8 @@ function buildIncidentItem(
     end = Math.min(scale.ceiling, start + scale.calloutDays - 1);
   }
 
+  const width = daySpan(start, end) * scale.pxPerDay;
+
   return {
     key,
     kind: 'incident',
@@ -134,15 +139,17 @@ function buildIncidentItem(
     title: episode.title,
     subtitle: episode.subtitle,
     anchor,
+    anchorOffset: Math.min(Math.max((anchor - start) * scale.pxPerDay, 0), width),
     start,
     end,
-    width: daySpan(start, end) * scale.pxPerDay,
+    width,
     fromPast: false,
     intoFuture: false,
     sliver: false,
     onFloor,
     onCeiling,
     supplementOf,
+    targetRailIndex,
     reference: false
   };
 }
@@ -155,6 +162,7 @@ function buildReferenceItem(category: LayoutCategory, scale: Scale): TimeItem {
     title: category.title,
     subtitle: '',
     anchor: null,
+    anchorOffset: 0,
     start: scale.floor,
     end: scale.ceiling,
     width: daySpan(scale.floor, scale.ceiling) * scale.pxPerDay,
@@ -164,6 +172,7 @@ function buildReferenceItem(category: LayoutCategory, scale: Scale): TimeItem {
     onFloor: false,
     onCeiling: false,
     supplementOf: null,
+    targetRailIndex: null,
     reference: true
   };
 }
@@ -181,6 +190,7 @@ function placeholder(
     title: '',
     subtitle: '',
     anchor: null,
+    anchorOffset: 0,
     start,
     end,
     width: daySpan(start, end) * scale.pxPerDay,
@@ -190,6 +200,7 @@ function placeholder(
     onFloor: false,
     onCeiling: false,
     supplementOf: null,
+    targetRailIndex: null,
     reference: false
   };
 }
@@ -243,11 +254,12 @@ function buildBand(
 
   const eraItems: TimeItem[] = [];
   const incidentItems: TimeItem[] = [];
+  const pendingSupplements: { episode: LayoutEpisode; anchor: DayNumber }[] = [];
 
   for (const episode of visible) {
     if (episode.kind === 'incident') {
       incidentItems.push(
-        buildIncidentItem(`incident-${episode.episodeId}`, episode, episode.start, scale, null)
+        buildIncidentItem(`incident-${episode.episodeId}`, episode, episode.start, scale, null, null)
       );
       continue;
     }
@@ -258,21 +270,36 @@ function buildBand(
     // Too narrow to read: point at it with a callout instead of relying on the bar itself.
     if (era.width < SUPPLEMENT_THRESHOLD_PX) {
       const midpoint = era.start + Math.floor(daySpan(era.start, era.end) / 2);
-      incidentItems.push(
-        buildIncidentItem(
-          `supplement-${episode.episodeId}`,
-          episode,
-          clamp(midpoint, scale.floor, scale.ceiling),
-          scale,
-          episode.episodeId
-        )
-      );
+      pendingSupplements.push({ episode, anchor: clamp(midpoint, scale.floor, scale.ceiling) });
     }
   }
 
   // A category of nothing but incidents still needs a bar for its callouts to point at.
   if (eraItems.length === 0 && incidentItems.length > 0) {
     eraItems.push(buildReferenceItem(category, scale));
+  }
+
+  // Eras are packed first so each supplement can record which rail its bar ended up on.
+  const eraRails = packRails(eraItems, 'era', scale, `${category.categoryId}-era`);
+
+  const eraRailByEpisode = new Map<string, number>();
+  eraRails.forEach((rail, index) => {
+    for (const item of rail.items) {
+      if (item.episodeId !== null) eraRailByEpisode.set(item.episodeId, index);
+    }
+  });
+
+  for (const { episode, anchor } of pendingSupplements) {
+    incidentItems.push(
+      buildIncidentItem(
+        `supplement-${episode.episodeId}`,
+        episode,
+        anchor,
+        scale,
+        episode.episodeId,
+        eraRailByEpisode.get(episode.episodeId) ?? null
+      )
+    );
   }
 
   incidentItems.sort((a, b) => a.start - b.start || a.key.localeCompare(b.key));
@@ -283,7 +310,7 @@ function buildBand(
     categoryId: category.categoryId,
     title: category.title,
     colorIndex,
-    eraRails: packRails(eraItems, 'era', scale, `${category.categoryId}-era`),
+    eraRails,
     // Incident rails alternate above and below the band, as the original did.
     incidentRailsAbove: incidentRails.filter((_, index) => index % 2 === 0),
     incidentRailsBelow: incidentRails.filter((_, index) => index % 2 === 1)

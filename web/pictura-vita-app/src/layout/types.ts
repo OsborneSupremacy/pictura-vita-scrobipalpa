@@ -77,6 +77,13 @@ export interface TimeItem {
    * instant it points at, so the two cannot be conflated.
    */
   anchor: DayNumber | null;
+  /**
+   * Pixels from the box's left edge to the anchor date. A callout is centred on its anchor
+   * until it is nudged away from an edge of the window, after which the two diverge — this
+   * is where a connector must actually be drawn, which the box's midpoint would get wrong.
+   * Zero for eras and placeholders.
+   */
+  anchorOffset: number;
   /** Start of the drawn box, clamped to the window. */
   start: DayNumber;
   /** Inclusive end of the drawn box, clamped to the window. */
@@ -96,6 +103,13 @@ export interface TimeItem {
    * for such a callout describes the era it points at, not a moment in time.
    */
   supplementOf: string | null;
+  /**
+   * Index of the era rail holding the bar this callout points at. Eras are packed onto as
+   * many rails as overlap demands, so the bar is not always on the rail nearest the
+   * callout; a connector has to cross the rails in between to reach it. Null when there is
+   * no specific target (a real incident marks a date, not a span).
+   */
+  targetRailIndex: number | null;
   /** A synthetic full-width era, drawn when a category has incidents but no eras. */
   reference: boolean;
 }

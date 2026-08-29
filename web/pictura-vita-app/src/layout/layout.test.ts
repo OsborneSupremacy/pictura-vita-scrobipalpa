@@ -176,6 +176,48 @@ describe('narrow eras', () => {
     expect(era.sliver).toBe(true);
   });
 
+  it('records which era rail the callout has to reach', () => {
+    // Three narrow eras overlapping in time, so they are forced onto three separate rails.
+    const layout = buildLayout({
+      categories: [category('work', 0)],
+      episodes: [
+        episode({ start: day('2005-01-01'), end: day('2005-01-20'), title: 'A' }),
+        episode({ start: day('2005-01-05'), end: day('2005-01-25'), title: 'B' }),
+        episode({ start: day('2005-01-10'), end: day('2005-01-30'), title: 'C' })
+      ],
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+    const band = layout.bands[0]!;
+    expect(band.eraRails).toHaveLength(3);
+
+    const callouts = [...band.incidentRailsAbove, ...band.incidentRailsBelow].flatMap(drawn);
+    expect(callouts).toHaveLength(3);
+
+    // Each callout must point at the rail its own bar landed on, not simply the nearest one.
+    for (const callout of callouts) {
+      const railIndex = band.eraRails.findIndex(rail =>
+        rail.items.some(item => item.episodeId === callout.supplementOf)
+      );
+      expect(callout.targetRailIndex).toBe(railIndex);
+    }
+
+    expect(new Set(callouts.map(c => c.targetRailIndex))).toEqual(new Set([0, 1, 2]));
+  });
+
+  it('leaves a real incident without an era target', () => {
+    const layout = buildLayout({
+      categories: [category('work', 0)],
+      episodes: [episode({ kind: 'incident', start: day('2005-06-15') })],
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+    const callout = layout.bands[0]!.incidentRailsAbove.flatMap(drawn)[0]!;
+    expect(callout.targetRailIndex).toBeNull();
+  });
+
   it('leaves a wide era alone', () => {
     const layout = buildLayout({
       ...narrow,
@@ -243,6 +285,64 @@ describe('incidents', () => {
     expect(band.incidentRailsAbove.length + band.incidentRailsBelow.length).toBe(3);
     expect(band.incidentRailsAbove).toHaveLength(2);
     expect(band.incidentRailsBelow).toHaveLength(1);
+  });
+
+  it('puts the anchor at the middle of a callout that is not nudged', () => {
+    const layout = buildLayout({
+      categories: [category('work', 0)],
+      episodes: [incidentAt('2005-06-15')],
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+    const callout = layout.bands[0]!.incidentRailsAbove.flatMap(drawn)[0]!;
+    expect(callout.anchorOffset).toBeCloseTo(callout.width / 2, 0);
+  });
+
+  it('moves the anchor to the edge of a callout that has been nudged inward', () => {
+    const layout = buildLayout({
+      categories: [category('work', 0)],
+      episodes: [incidentAt('2000-01-01'), incidentAt('2009-12-31')],
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+    const callouts = [
+      ...layout.bands[0]!.incidentRailsAbove,
+      ...layout.bands[0]!.incidentRailsBelow
+    ].flatMap(drawn);
+
+    // The box slides inward but the date it marks does not, so the connector has to be
+    // drawn at the very edge of the box rather than down its middle.
+    expect(callouts.find(c => c.onFloor)!.anchorOffset).toBeCloseTo(0, 0);
+    expect(callouts.find(c => c.onCeiling)!.anchorOffset).toBeCloseTo(
+      callouts.find(c => c.onCeiling)!.width,
+      0
+    );
+  });
+
+  it('never puts the anchor outside the box', () => {
+    const layout = buildLayout({
+      categories: [category('work', 0)],
+      episodes: [
+        incidentAt('2000-01-01'),
+        incidentAt('2005-06-15'),
+        incidentAt('2009-12-31')
+      ],
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+    const callouts = [
+      ...layout.bands[0]!.incidentRailsAbove,
+      ...layout.bands[0]!.incidentRailsBelow
+    ].flatMap(drawn);
+
+    expect(callouts).not.toHaveLength(0);
+    for (const callout of callouts) {
+      expect(callout.anchorOffset).toBeGreaterThanOrEqual(0);
+      expect(callout.anchorOffset).toBeLessThanOrEqual(callout.width);
+    }
   });
 
   it('adds a reference bar when a category has incidents but no eras', () => {

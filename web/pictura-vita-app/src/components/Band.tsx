@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { CategoryBand, Rail, TimeItem } from '../layout';
 
 interface Props {
@@ -19,9 +20,39 @@ function itemClassName(item: TimeItem, selected: boolean): string {
     .join(' ');
 }
 
-function Arrow({ item, direction }: { item: TimeItem; direction: 'up' | 'down' }) {
-  const position = item.onFloor ? 'at-start' : item.onCeiling ? 'at-end' : 'centred';
-  return <div className={`arrow arrow-${direction} ${position}`} />;
+/**
+ * The line joining a callout to the bar it points at.
+ *
+ * It is drawn at the callout's anchor offset rather than at its midpoint, because a callout
+ * nudged away from the edge of the window no longer sits over the date it marks. Its length
+ * is derived from how many callout rails sit between this one and the era rails, so it
+ * reaches the bar however deeply the callouts are stacked — the original drew a fixed 8px
+ * triangle that only ever touched when a callout happened to be on the nearest rail.
+ */
+function Connector({
+  item,
+  direction,
+  calloutRailsToCross,
+  eraRailCount
+}: {
+  item: TimeItem;
+  direction: 'up' | 'down';
+  calloutRailsToCross: number;
+  eraRailCount: number;
+}) {
+  // A real incident has no particular bar to reach, so it stops at the nearest era rail.
+  const target = item.targetRailIndex ?? (direction === 'down' ? 0 : eraRailCount - 1);
+
+  const eraRailsToCross =
+    direction === 'down' ? target : eraRailCount - 1 - target;
+
+  const style = {
+    left: `${item.anchorOffset}px`,
+    '--callout-rails': calloutRailsToCross,
+    '--era-rails': Math.max(0, eraRailsToCross)
+  } as CSSProperties;
+
+  return <span className={`connector connector-${direction}`} style={style} aria-hidden="true" />;
 }
 
 function ItemBox({
@@ -57,12 +88,16 @@ function ItemBox({
 
 function RailRow({
   rail,
-  arrow,
+  connect,
+  calloutRailsToCross = 0,
+  eraRailCount = 1,
   selectedKey,
   onSelect
 }: {
   rail: Rail;
-  arrow?: 'up' | 'down';
+  connect?: 'up' | 'down';
+  calloutRailsToCross?: number;
+  eraRailCount?: number;
   selectedKey: string | null;
   onSelect: (item: TimeItem, element: HTMLElement) => void;
 }) {
@@ -70,9 +105,15 @@ function RailRow({
     <div className={`rail rail-${rail.kind}`}>
       {rail.items.map(item => (
         <div key={item.key} className="rail-cell" style={{ width: `${item.width}px` }}>
-          {arrow === 'up' && item.kind !== 'placeholder' && <Arrow item={item} direction="up" />}
           <ItemBox item={item} selected={item.key === selectedKey} onSelect={onSelect} />
-          {arrow === 'down' && item.kind !== 'placeholder' && <Arrow item={item} direction="down" />}
+          {connect && item.kind !== 'placeholder' && (
+            <Connector
+              item={item}
+              direction={connect}
+              calloutRailsToCross={calloutRailsToCross}
+              eraRailCount={eraRailCount}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -86,16 +127,33 @@ export function Band({ band, selectedKey, onSelect }: Props) {
           before its own heading reads as belonging to the band above it. */}
       <h2 className="band-title">{band.title}</h2>
 
-      {band.incidentRailsAbove.map(rail => (
-        <RailRow key={rail.key} rail={rail} arrow="down" selectedKey={selectedKey} onSelect={onSelect} />
+      {band.incidentRailsAbove.map((rail, index, rails) => (
+        <RailRow
+          key={rail.key}
+          rail={rail}
+          connect="down"
+          // The topmost rail is furthest from the bars and has the most rails to cross.
+          calloutRailsToCross={rails.length - 1 - index}
+          eraRailCount={band.eraRails.length}
+          selectedKey={selectedKey}
+          onSelect={onSelect}
+        />
       ))}
 
       {band.eraRails.map(rail => (
         <RailRow key={rail.key} rail={rail} selectedKey={selectedKey} onSelect={onSelect} />
       ))}
 
-      {band.incidentRailsBelow.map(rail => (
-        <RailRow key={rail.key} rail={rail} arrow="up" selectedKey={selectedKey} onSelect={onSelect} />
+      {band.incidentRailsBelow.map((rail, index) => (
+        <RailRow
+          key={rail.key}
+          rail={rail}
+          connect="up"
+          calloutRailsToCross={index}
+          eraRailCount={band.eraRails.length}
+          selectedKey={selectedKey}
+          onSelect={onSelect}
+        />
       ))}
     </section>
   );

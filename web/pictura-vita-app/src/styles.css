@@ -13,6 +13,13 @@
   --callout: linear-gradient(180deg, #f1da36, #fcf18f);
   --callout-edge: #f1da36;
 
+  /* Callout rails are a fixed height so a connector's length can be computed from the
+     number of rails it crosses, with no measurement and no layout thrash. */
+  --callout-rail-h: 38px;
+  /* 30px bar + the 2px above and below it: the cell is border-box, so this has to leave
+     the bar its full min-height or the rails overlap each other. */
+  --era-rail-h: 34px;
+
   --ink: #1a1a1a;
   --muted: #6b7280;
   --surface: #ffffff;
@@ -129,7 +136,14 @@ main { padding: 16px 20px 40px; }
   align-items: flex-start;
 }
 
-.rail-cell { flex: 0 0 auto; }
+.rail-cell { flex: 0 0 auto; position: relative; }
+
+.rail-incident .rail-cell { height: var(--callout-rail-h); }
+.rail-incident .incident { height: 100%; }
+
+/* Fixed too, so a connector crossing era rails can be sized without measuring them. */
+.rail-era .rail-cell { height: var(--era-rail-h); }
+.rail-era .era { height: 100%; }
 
 .rail-era .rail-cell { padding: 2px 0; }
 
@@ -139,6 +153,8 @@ main { padding: 16px 20px 40px; }
 
 .era,
 .incident {
+  position: relative;
+  z-index: 2;
   display: block;
   width: 100%;
   border: 0;
@@ -204,20 +220,41 @@ main { padding: 16px 20px 40px; }
 .incident .title { font-size: 10.5px; }
 .incident .subtitle { font-size: 10px; }
 
-.arrow {
-  position: relative;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
+/* Joins a callout to the bar it points at, crossing both the callout rails stacked between
+   them and any era rails above the target's own. The 6px tail carries the line into the bar
+   so the arrowhead touches rather than stopping just short. */
+.connector {
+  position: absolute;
+  width: 2px;
+  margin-left: -1px;
+  height: calc(
+    var(--callout-rail-h) * var(--callout-rails, 0) +
+    var(--era-rail-h) * var(--era-rails, 0) + 6px
+  );
+  background: var(--callout-edge);
+  z-index: 1;
 }
 
-.arrow.centred { left: calc(50% - 5px); }
-.arrow.at-start { left: 4px; }
-.arrow.at-end { left: calc(100% - 14px); }
+.connector-down { top: 100%; }
+.connector-up { bottom: 100%; }
 
-.arrow-up { border-bottom: 7px solid var(--callout-edge); }
-.arrow-down { border-top: 7px solid var(--callout-edge); }
+.connector::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.connector-down::after {
+  bottom: 0;
+  border-top: 5px solid var(--callout-edge);
+}
+
+.connector-up::after {
+  top: 0;
+  border-bottom: 5px solid var(--callout-edge);
+}
 
 /* ---- Detail ---- */
 
