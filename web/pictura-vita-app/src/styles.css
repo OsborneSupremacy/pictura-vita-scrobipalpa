@@ -53,6 +53,42 @@ main { padding: 16px 20px 40px; }
 
 .app-header h1 { font-size: 20px; margin: 0; }
 
+/* The title stays optically centred: the button is taken out of flow rather than
+   being laid out beside it. */
+.band-add {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.band-add:hover {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.toolbar .add-episode {
+  padding: 4px 12px;
+  font: inherit;
+  border: 1px solid #1d4ed8;
+  border-radius: 4px;
+  background: #1d4ed8;
+  color: #fff;
+  cursor: pointer;
+}
+
 /* ---- Timeline info dialog ---- */
 
 .link {
@@ -490,6 +526,7 @@ main { padding: 16px 20px 40px; }
 .band { padding: 0 0 10px; }
 
 .band-title {
+  position: relative;
   margin: 0;
   padding: 3px 8px;
   font-size: 12px;

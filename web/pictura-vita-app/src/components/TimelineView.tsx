@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ApiEpisode, ApiTimeline } from '../api/types';
+import type { ApiTimeline } from '../api/types';
 import { toLayoutCategory, toLayoutEpisode } from '../api/adapter';
 import {
   buildLayout,
@@ -15,7 +15,7 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
 import { Band } from './Band';
 import { DetailPanel, type Anchor } from './DetailPanel';
-import { EpisodeDialog } from './EpisodeDialog';
+import { EpisodeDialog, type EpisodeDialogMode } from './EpisodeDialog';
 import { FilterControls } from './FilterControls';
 
 interface Props {
@@ -35,7 +35,7 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
   // Tracked as hidden rather than visible so a category added later shows up by default.
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
-  const [editing, setEditing] = useState<ApiEpisode | null>(null);
+  const [dialogMode, setDialogMode] = useState<EpisodeDialogMode | null>(null);
 
   // Anchor coordinates are taken relative to the timeline container rather than the
   // viewport, so the panel stays attached to its item as the page scrolls.
@@ -130,6 +130,10 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
   return (
     <div className="timeline" ref={container}>
       <div className="toolbar">
+        <button type="button" className="add-episode" onClick={() => setDialogMode({ kind: 'add', categoryIds: [] })}>
+          Add episode
+        </button>
+
         <span className="range">
           {toIso(window.floor)} – {toIso(window.ceiling)}
           <span className="muted">
@@ -170,6 +174,7 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
                 band={band}
                 selectedKey={selected?.item.key ?? null}
                 onSelect={select}
+                onAdd={categoryId => setDialogMode({ kind: 'add', categoryIds: [categoryId] })}
               />
             ))}
             <AxisRow increments={layout.axis} onZoom={onZoom} />
@@ -195,20 +200,21 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
           onZoom={onZoom}
           onEdit={episodeToEdit => {
             setSelected(null);
-            setEditing(episodeToEdit);
+            setDialogMode({ kind: 'edit', episode: episodeToEdit });
           }}
         />
       )}
 
-      {editing && (
+      {dialogMode && (
         <EpisodeDialog
           timeline={timeline}
-          episode={editing}
+          mode={dialogMode}
+          today={today}
           onSaved={() => {
-            setEditing(null);
+            setDialogMode(null);
             onChanged();
           }}
-          onClose={() => setEditing(null)}
+          onClose={() => setDialogMode(null)}
         />
       )}
     </div>

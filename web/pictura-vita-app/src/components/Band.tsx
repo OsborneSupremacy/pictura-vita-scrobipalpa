@@ -5,6 +5,7 @@ interface Props {
   band: CategoryBand;
   selectedKey: string | null;
   onSelect: (item: TimeItem, element: HTMLElement) => void;
+  onAdd: (categoryId: string) => void;
 }
 
 function itemClassName(item: TimeItem, selected: boolean): string {
@@ -120,12 +121,23 @@ function RailRow({
   );
 }
 
-export function Band({ band, selectedKey, onSelect }: Props) {
+export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
   return (
     <section className={`band cat-${band.colorIndex}`}>
       {/* Header first, then the callouts that sit above the bars: a callout rendered
           before its own heading reads as belonging to the band above it. */}
-      <h2 className="band-title">{band.title}</h2>
+      <h2 className="band-title">
+        {band.title}
+        <button
+          type="button"
+          className="band-add"
+          title={`Add an episode to ${band.title}`}
+          aria-label={`Add an episode to ${band.title}`}
+          onClick={() => onAdd(band.categoryId)}
+        >
+          +
+        </button>
+      </h2>
 
       {band.incidentRailsAbove.map((rail, index, rails) => (
         <RailRow

@@ -105,6 +105,23 @@ export interface UpdateCategoryRequest {
   category: ApiCategory;
 }
 
+export interface InsertEpisodeRequest {
+  timelineId: string;
+  confidentiality: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  url: string;
+  urlDescription: string;
+  startPrecision: number;
+  start: string;
+  endPrecision: number;
+  end: string;
+  indefinite: boolean;
+  categoryIds: string[];
+  /** Deliberately absent: the server derives it from the dates. */
+}
+
 export interface UpdateEpisodeRequest {
   timelineId: string;
   episode: ApiEpisode;

@@ -2,6 +2,7 @@ import type {
   ApiTimeline,
   ApiTimelineSummary,
   InsertCategoryRequest,
+  InsertEpisodeRequest,
   UpdateCategoryRequest,
   UpdateEpisodeRequest,
   UpdateTimelineInfoRequest
@@ -89,5 +90,6 @@ export const api = {
   updateCategory: (request: UpdateCategoryRequest) => send('PUT', '/category', request),
   deleteCategory: (categoryId: string) => send('DELETE', `/category/${categoryId}`),
 
+  insertEpisode: (request: InsertEpisodeRequest) => send('POST', '/episode', request),
   updateEpisode: (request: UpdateEpisodeRequest) => send('PUT', '/episode', request)
 };

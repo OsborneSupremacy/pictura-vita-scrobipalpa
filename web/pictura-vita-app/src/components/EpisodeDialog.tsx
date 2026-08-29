@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { Confidentiality, type ApiEpisode, type ApiTimeline } from '../api/types';
-import { MAX_DATE_ISO } from '../layout';
+import { MAX_DATE_ISO, toIso, type DayNumber } from '../layout';
+
+/**
+ * Adding and editing differ only in where the draft starts and which call saves it, so
+ * they share a dialog rather than duplicating every field and its validation.
+ */
+export type EpisodeDialogMode =
+  | { kind: 'edit'; episode: ApiEpisode }
+  | { kind: 'add'; categoryIds: string[] };
 
 interface Props {
   timeline: ApiTimeline;
-  episode: ApiEpisode;
+  mode: EpisodeDialogMode;
+  today: DayNumber;
   onSaved: () => void;
   onClose: () => void;
 }
@@ -34,7 +43,7 @@ const LEVELS = [
   { value: Confidentiality.OnlyMe, label: 'Only me' }
 ];
 
-const toDraft = (episode: ApiEpisode): Draft => ({
+const fromEpisode = (episode: ApiEpisode): Draft => ({
   title: episode.title,
   subtitle: episode.subtitle,
   description: episode.description,
@@ -47,6 +56,23 @@ const toDraft = (episode: ApiEpisode): Draft => ({
   categoryIds: [...episode.categoryIds]
 });
 
+/** A new episode starts as a single day, today, inheriting its category's visibility. */
+const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
+  title: '',
+  subtitle: '',
+  description: '',
+  url: '',
+  urlDescription: '',
+  start: toIso(today),
+  end: toIso(today),
+  indefinite: false,
+  confidentiality: Confidentiality.Inherit,
+  categoryIds: [...categoryIds]
+});
+
+const toDraft = (mode: EpisodeDialogMode, today: DayNumber): Draft =>
+  mode.kind === 'edit' ? fromEpisode(mode.episode) : blankDraft(mode.categoryIds, today);
+
 function problemWith(draft: Draft): string | null {
   if (!draft.title.trim()) return 'Give the episode a title.';
   if (!draft.start) return 'Give a start date.';
@@ -56,9 +82,9 @@ function problemWith(draft: Draft): string | null {
   return null;
 }
 
-export function EpisodeDialog({ timeline, episode, onSaved, onClose }: Props) {
+export function EpisodeDialog({ timeline, mode, today, onSaved, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [draft, setDraft] = useState<Draft>(() => toDraft(episode));
+  const [draft, setDraft] = useState<Draft>(() => toDraft(mode, today));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,23 +115,34 @@ export function EpisodeDialog({ timeline, episode, onSaved, onClose }: Props) {
     setSaving(true);
     setError(null);
 
+    const fields = {
+      title: draft.title.trim(),
+      subtitle: draft.subtitle,
+      description: draft.description,
+      url: draft.url,
+      urlDescription: draft.urlDescription,
+      start: draft.start,
+      end: draft.indefinite ? MAX_DATE_ISO : draft.end,
+      indefinite: draft.indefinite,
+      confidentiality: draft.confidentiality,
+      categoryIds: draft.categoryIds
+    };
+
     try {
-      await api.updateEpisode({
-        timelineId: timeline.timelineId,
-        episode: {
-          ...episode,
-          title: draft.title.trim(),
-          subtitle: draft.subtitle,
-          description: draft.description,
-          url: draft.url,
-          urlDescription: draft.urlDescription,
-          start: draft.start,
-          end: draft.indefinite ? MAX_DATE_ISO : draft.end,
-          indefinite: draft.indefinite,
-          confidentiality: draft.confidentiality,
-          categoryIds: draft.categoryIds
-        }
-      });
+      if (mode.kind === 'add') {
+        // episodeType is omitted: the server derives it from the dates.
+        await api.insertEpisode({
+          timelineId: timeline.timelineId,
+          startPrecision: 0,
+          endPrecision: 0,
+          ...fields
+        });
+      } else {
+        await api.updateEpisode({
+          timelineId: timeline.timelineId,
+          episode: { ...mode.episode, ...fields }
+        });
+      }
       onSaved();
     } catch (problemSaving: unknown) {
       setError(problemSaving instanceof Error ? problemSaving.message : String(problemSaving));
@@ -119,7 +156,7 @@ export function EpisodeDialog({ timeline, episode, onSaved, onClose }: Props) {
     <dialog ref={dialog} className="info-dialog episode-dialog" onClose={onClose} onCancel={onClose}>
       <form method="dialog" onSubmit={event => event.preventDefault()}>
         <header>
-          <h2>Edit episode</h2>
+          <h2>{mode.kind === 'add' ? 'Add episode' : 'Edit episode'}</h2>
           <button type="button" onClick={onClose} aria-label="Close">×</button>
         </header>
 
@@ -228,7 +265,7 @@ export function EpisodeDialog({ timeline, episode, onSaved, onClose }: Props) {
             disabled={saving || problem !== null}
             title={problem ?? undefined}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : mode.kind === 'add' ? 'Add' : 'Save'}
           </button>
         </footer>
       </form>
