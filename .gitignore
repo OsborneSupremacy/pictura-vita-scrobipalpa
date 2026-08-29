@@ -351,3 +351,7 @@ MigrationBackup/
 
 # MacOs
 .DS_Store
+# Local environment configuration — may point at real data; never commit.
+# Commit .env.example instead.
+.env
+.env.local

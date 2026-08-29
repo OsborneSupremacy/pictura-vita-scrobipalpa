@@ -1,6 +1,5 @@
 using Pictura.Vita.Domain;
 using Pictura.Vita.Excel.Importer.Models;
-using Pictura.Vita.Utility.Extensions;
 
 namespace Pictura.Vita.Excel.Importer.Services;
 
@@ -15,12 +14,14 @@ internal static class TransformerService
         var categories = occurrences.Values
             .Select(o => o.Group)
             .Distinct()
-            .Select(g => new Category
+            .Order()
+            .Select((g, index) => new Category
             {
                 CategoryId = Guid.CreateVersion7(),
                 Title = g,
                 Subtitle = string.Empty,
-                Confidentiality = Confidentiality.OnlyMe
+                Confidentiality = Confidentiality.OnlyMe,
+                SortOrder = index
             })
             .ToList();
 
@@ -33,12 +34,14 @@ internal static class TransformerService
                 Description = o.Value.Description2,
                 Url = o.Value.Url,
                 UrlDescription = o.Value.UrlDescription,
-                EpisodeType = o.Value.StartDate.Equals(o.Value.EndDate) ? EpisodeType.Incident : EpisodeType.Era,
+                EpisodeType = !o.Value.Indefinite && o.Value.StartDate.Equals(o.Value.EndDate)
+                    ? EpisodeType.Incident
+                    : EpisodeType.Era,
                 Start = o.Value.StartDate,
                 StartPrecision = DatePrecision.Day,
                 EndPrecision = DatePrecision.Day,
                 End = o.Value.EndDate,
-                Duration = o.Value.EndDate.Difference(o.Value.StartDate).Days,
+                Indefinite = o.Value.Indefinite,
                 Confidentiality = Confidentiality.OnlyMe,
                 CategoryIds = categories
                     .Where(c => c.Title == o.Value.Group)

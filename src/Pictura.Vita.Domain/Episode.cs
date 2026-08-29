@@ -24,12 +24,17 @@ public record Episode
 
     public required DatePrecision EndPrecision { get; init; }
 
+    /// <summary>
+    /// The end of the episode. When <see cref="Indefinite"/> is true this is
+    /// <see cref="DateOnly.MaxValue"/> and carries no meaning beyond "no known end".
+    /// </summary>
     public required DateOnly End { get; init; }
 
     /// <summary>
-    /// Duration in days
+    /// True when the episode is ongoing and has no known end date. Indefinite episodes
+    /// are drawn as running past the end of the timeline.
     /// </summary>
-    public required int Duration { get; init; }
+    public required bool Indefinite { get; init; }
 
     public required IList<Guid> CategoryIds { get; init; }
 }

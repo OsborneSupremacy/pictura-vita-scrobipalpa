@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="Pictura.Vita.Api/Pictura.Vita.Api.csproj" />
+  <Project Path="Pictura.Vita.Data.Integration.Tests/Pictura.Vita.Data.Integration.Tests.csproj" />
+  <Project Path="Pictura.Vita.Data/Pictura.Vita.Data.csproj" />
+  <Project Path="Pictura.Vita.Domain.Extensions/Pictura.Vita.Domain.Extensions.csproj" />
+  <Project Path="Pictura.Vita.Domain/Pictura.Vita.Domain.csproj" />
+  <Project Path="Pictura.Vita.Excel.Importer/Pictura.Vita.Excel.Importer.csproj" />
+  <Project Path="Pictura.Vita.Messaging/Pictura.Vita.Messaging.csproj" />
+  <Project Path="Pictura.Vita.Utility/Pictura.Vita.Utility.csproj" />
+</Solution>

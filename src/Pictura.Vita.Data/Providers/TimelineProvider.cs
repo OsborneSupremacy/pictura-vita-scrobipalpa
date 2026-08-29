@@ -102,7 +102,8 @@ public class TimelineProvider
             CategoryId = Guid.CreateVersion7(),
             Confidentiality = request.Confidentiality,
             Title = request.Title,
-            Subtitle = request.Subtitle
+            Subtitle = request.Subtitle,
+            SortOrder = request.SortOrder
         };
 
         timeline.Value.Categories.Add(newCategory);
@@ -129,7 +130,8 @@ public class TimelineProvider
         {
             Confidentiality = request.Category.Confidentiality,
             Title = request.Category.Title,
-            Subtitle = request.Category.Subtitle
+            Subtitle = request.Category.Subtitle,
+            SortOrder = request.Category.SortOrder
         });
 
         await _collection
@@ -153,12 +155,14 @@ public class TimelineProvider
             Description = request.Description,
             Url = request.Url,
             UrlDescription = request.UrlDescription,
-            EpisodeType = request.Start.Equals(request.End) ? EpisodeType.Incident : EpisodeType.Era,
+            EpisodeType = !request.Indefinite && request.Start.Equals(request.End)
+                ? EpisodeType.Incident
+                : EpisodeType.Era,
             StartPrecision = request.StartPrecision,
             Start = request.Start,
             EndPrecision = request.EndPrecision,
             End = request.End,
-            Duration = request.End.Difference(request.Start).Days,
+            Indefinite = request.Indefinite,
             CategoryIds = request.CategoryIds
         };
 
@@ -194,7 +198,7 @@ public class TimelineProvider
             Start = request.Episode.Start,
             EndPrecision = request.Episode.EndPrecision,
             End = request.Episode.End,
-            Duration = request.Episode.Duration(),
+            Indefinite = request.Episode.Indefinite,
             CategoryIds = request.Episode.CategoryIds
         };
 

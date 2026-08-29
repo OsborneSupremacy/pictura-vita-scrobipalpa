@@ -44,7 +44,7 @@
           "start": "1932-06-19",
           "endPrecision": 0,
           "end": "1932-06-19",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-732f-bc56-1b115b32a1c2"
           ]
@@ -62,7 +62,7 @@
           "start": "1932-10-26",
           "endPrecision": 0,
           "end": "1932-10-26",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf"
           ]
@@ -80,7 +80,7 @@
           "start": "1932-11-17",
           "endPrecision": 0,
           "end": "1935-06-17",
-          "duration": 942,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-732f-bc56-1b115b32a1c2"
           ]
@@ -98,7 +98,7 @@
           "start": "1935-12-17",
           "endPrecision": 0,
           "end": "1941-06-17",
-          "duration": 2009,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -116,7 +116,7 @@
           "start": "1937-06-16",
           "endPrecision": 0,
           "end": "1939-02-16",
-          "duration": 610,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf"
           ]
@@ -134,7 +134,7 @@
           "start": "1938-02-03",
           "endPrecision": 0,
           "end": "1946-03-03",
-          "duration": 2950,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab3-7d69-acd6-7c00980e611a"
           ]
@@ -152,7 +152,7 @@
           "start": "1943-06-04",
           "endPrecision": 0,
           "end": "1946-06-04",
-          "duration": 1096,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-732f-bc56-1b115b32a1c2"
           ]
@@ -170,7 +170,7 @@
           "start": "1945-05-23",
           "endPrecision": 0,
           "end": "1945-05-23",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -188,7 +188,7 @@
           "start": "1949-07-11",
           "endPrecision": 0,
           "end": "1956-06-11",
-          "duration": 2527,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -206,7 +206,7 @@
           "start": "1950-10-03",
           "endPrecision": 0,
           "end": "1957-01-03",
-          "duration": 2284,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -224,7 +224,7 @@
           "start": "1952-05-26",
           "endPrecision": 0,
           "end": "1952-05-26",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -242,7 +242,7 @@
           "start": "1954-12-08",
           "endPrecision": 0,
           "end": "1954-12-08",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7fa0-a6f3-b2603cc0808e"
           ]
@@ -260,7 +260,7 @@
           "start": "1955-12-25",
           "endPrecision": 0,
           "end": "1955-12-25",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7fa0-a6f3-b2603cc0808e"
           ]
@@ -278,7 +278,7 @@
           "start": "1957-12-03",
           "endPrecision": 0,
           "end": "1957-12-03",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab3-7d69-acd6-7c00980e611a"
           ]
@@ -296,7 +296,7 @@
           "start": "1958-08-11",
           "endPrecision": 0,
           "end": "1959-10-11",
-          "duration": 426,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -314,7 +314,7 @@
           "start": "1959-04-19",
           "endPrecision": 0,
           "end": "1959-04-19",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-732f-bc56-1b115b32a1c2"
           ]
@@ -332,7 +332,7 @@
           "start": "1960-02-04",
           "endPrecision": 0,
           "end": "1962-10-04",
-          "duration": 973,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73af-aafe-593e7275a66d"
           ]
@@ -350,7 +350,7 @@
           "start": "1961-05-17",
           "endPrecision": 0,
           "end": "1961-05-17",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -368,7 +368,7 @@
           "start": "1962-10-06",
           "endPrecision": 0,
           "end": "1962-10-06",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -386,7 +386,7 @@
           "start": "1964-08-23",
           "endPrecision": 0,
           "end": "1964-08-23",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf"
           ]
@@ -404,7 +404,7 @@
           "start": "1967-12-16",
           "endPrecision": 0,
           "end": "1967-12-16",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7398-978c-e2b59c67e261"
           ]
@@ -422,7 +422,7 @@
           "start": "1973-01-25",
           "endPrecision": 0,
           "end": "1981-06-25",
-          "duration": 3073,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -440,7 +440,7 @@
           "start": "1973-04-19",
           "endPrecision": 0,
           "end": "1978-07-19",
-          "duration": 1917,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73af-aafe-593e7275a66d"
           ]
@@ -458,7 +458,7 @@
           "start": "1973-10-14",
           "endPrecision": 0,
           "end": "1979-07-14",
-          "duration": 2099,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7398-978c-e2b59c67e261"
           ]
@@ -476,7 +476,7 @@
           "start": "1977-03-07",
           "endPrecision": 0,
           "end": "1977-03-07",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab3-7d69-acd6-7c00980e611a"
           ]
@@ -494,7 +494,7 @@
           "start": "1983-01-19",
           "endPrecision": 0,
           "end": "1984-10-19",
-          "duration": 639,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7ab7-ac75-ffbe08973ade"
           ]
@@ -512,7 +512,7 @@
           "start": "1989-02-17",
           "endPrecision": 0,
           "end": "1997-01-17",
-          "duration": 2891,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7398-978c-e2b59c67e261"
           ]
@@ -530,7 +530,7 @@
           "start": "1989-06-05",
           "endPrecision": 0,
           "end": "1989-06-05",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -548,7 +548,7 @@
           "start": "1992-10-26",
           "endPrecision": 0,
           "end": "1992-10-26",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7b39-9331-a30b59bad94b"
           ]
@@ -566,7 +566,7 @@
           "start": "1993-02-18",
           "endPrecision": 0,
           "end": "1994-09-18",
-          "duration": 577,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -584,7 +584,7 @@
           "start": "1993-09-06",
           "endPrecision": 0,
           "end": "1994-09-06",
-          "duration": 365,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7b39-9331-a30b59bad94b"
           ]
@@ -602,7 +602,7 @@
           "start": "1993-12-16",
           "endPrecision": 0,
           "end": "1995-01-16",
-          "duration": 396,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7fa0-a6f3-b2603cc0808e"
           ]
@@ -620,7 +620,7 @@
           "start": "1997-07-07",
           "endPrecision": 0,
           "end": "1997-07-07",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -638,7 +638,7 @@
           "start": "1999-02-19",
           "endPrecision": 0,
           "end": "2000-08-19",
-          "duration": 547,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7ab7-ac75-ffbe08973ade"
           ]
@@ -656,7 +656,7 @@
           "start": "2000-04-06",
           "endPrecision": 0,
           "end": "2000-04-06",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -674,7 +674,7 @@
           "start": "2001-02-23",
           "endPrecision": 0,
           "end": "2003-08-23",
-          "duration": 911,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -692,7 +692,7 @@
           "start": "2002-01-10",
           "endPrecision": 0,
           "end": "2011-04-10",
-          "duration": 3377,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7ab7-ac75-ffbe08973ade"
           ]
@@ -710,7 +710,7 @@
           "start": "2002-08-08",
           "endPrecision": 0,
           "end": "2009-12-08",
-          "duration": 2679,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7398-978c-e2b59c67e261"
           ]
@@ -728,7 +728,7 @@
           "start": "2005-08-01",
           "endPrecision": 0,
           "end": "2005-08-01",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -746,7 +746,7 @@
           "start": "2008-10-02",
           "endPrecision": 0,
           "end": "2008-10-02",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -763,8 +763,8 @@
           "startPrecision": 0,
           "start": "2012-05-31",
           "endPrecision": 0,
-          "end": "2018-09-30",
-          "duration": 2313,
+          "end": "9999-12-31",
+          "indefinite": true,
           "categoryIds": [
             "01979e65-0ab5-7b39-9331-a30b59bad94b"
           ]
@@ -782,7 +782,7 @@
           "start": "2012-06-09",
           "endPrecision": 0,
           "end": "2012-06-09",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -800,7 +800,7 @@
           "start": "2016-05-31",
           "endPrecision": 0,
           "end": "2018-01-31",
-          "duration": 610,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-718c-b677-4800e9122753"
           ]
@@ -818,7 +818,7 @@
           "start": "2017-04-15",
           "endPrecision": 0,
           "end": "2017-04-15",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab3-7d69-acd6-7c00980e611a"
           ]
@@ -835,8 +835,8 @@
           "startPrecision": 0,
           "start": "2018-08-30",
           "endPrecision": 0,
-          "end": "2021-12-30",
-          "duration": 1218,
+          "end": "9999-12-31",
+          "indefinite": true,
           "categoryIds": [
             "01979e65-0ab5-7a23-96b0-ea9c7f639970"
           ]
@@ -854,7 +854,7 @@
           "start": "2020-04-22",
           "endPrecision": 0,
           "end": "2020-04-22",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf"
           ]
@@ -872,7 +872,7 @@
           "start": "2020-10-27",
           "endPrecision": 0,
           "end": "2020-10-27",
-          "duration": 0,
+          "indefinite": false,
           "categoryIds": [
             "01979e65-0ab5-7fa0-a6f3-b2603cc0808e"
           ]
@@ -883,61 +883,71 @@
           "categoryId": "01979e65-0ab3-7d69-acd6-7c00980e611a",
           "title": "Family",
           "subtitle": "Natus nisi fugit.",
-          "confidentiality": 1
+          "confidentiality": 1,
+          "sortOrder": 2
         },
         {
           "categoryId": "01979e65-0ab5-7b39-9331-a30b59bad94b",
           "title": "Friends",
           "subtitle": "Ut possimus aut.",
-          "confidentiality": 0
+          "confidentiality": 0,
+          "sortOrder": 4
         },
         {
           "categoryId": "01979e65-0ab5-7a23-96b0-ea9c7f639970",
           "title": "Work",
           "subtitle": "Possimus sed eius.",
-          "confidentiality": 0
+          "confidentiality": 0,
+          "sortOrder": 9
         },
         {
           "categoryId": "01979e65-0ab5-7ab7-ac75-ffbe08973ade",
           "title": "Education",
           "subtitle": "Commodi ex repudiandae.",
-          "confidentiality": 1
+          "confidentiality": 1,
+          "sortOrder": 1
         },
         {
           "categoryId": "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf",
           "title": "Travel",
           "subtitle": "Et culpa non.",
-          "confidentiality": 2
+          "confidentiality": 2,
+          "sortOrder": 8
         },
         {
           "categoryId": "01979e65-0ab5-7fa0-a6f3-b2603cc0808e",
           "title": "Hobbies",
           "subtitle": "Recusandae aspernatur consectetur.",
-          "confidentiality": 3
+          "confidentiality": 3,
+          "sortOrder": 6
         },
         {
           "categoryId": "01979e65-0ab5-732f-bc56-1b115b32a1c2",
           "title": "Health",
           "subtitle": "Est et aut.",
-          "confidentiality": 1
+          "confidentiality": 1,
+          "sortOrder": 5
         },
         {
           "categoryId": "01979e65-0ab5-73af-aafe-593e7275a66d",
           "title": "Finance",
           "subtitle": "Ab recusandae occaecati.",
-          "confidentiality": 1
+          "confidentiality": 1,
+          "sortOrder": 3
         },
         {
           "categoryId": "01979e65-0ab5-7398-978c-e2b59c67e261",
           "title": "Achievements",
           "subtitle": "Voluptates et cum.",
-          "confidentiality": 1
+          "confidentiality": 1,
+          "sortOrder": 0
         },
         {
           "categoryId": "01979e65-0ab5-718c-b677-4800e9122753",
           "title": "Miscellaneous",
           "subtitle": "Dolores magni aut.",
-          "confidentiality": 3
+          "confidentiality": 3,
+          "sortOrder": 7
         }
       ]
     }

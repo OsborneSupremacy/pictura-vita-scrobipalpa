@@ -35,12 +35,13 @@ public class RandomTimelineProvider
         var person = GeneratePerson();
 
         var categories = _standardCategoryNames
-            .Select(name => new Category
+            .Select((name, index) => new Category
             {
                 CategoryId = Guid.CreateVersion7(),
                 Title = name,
                 Subtitle = _faker.Lorem.Sentence(3),
-                Confidentiality = _randomizer.Enum<Confidentiality>()
+                Confidentiality = _randomizer.Enum<Confidentiality>(),
+                SortOrder = index
             })
             .ToList();
 
@@ -112,17 +113,18 @@ public class RandomTimelineProvider
         episodeFaker
             .RuleFor(e => e.EpisodeId, _ => Guid.CreateVersion7())
             .RuleFor(e => e.Confidentiality, _ => _randomizer.Enum<Confidentiality>())
-            .RuleFor(e => e.Title, _ => _faker.Lorem.Sentence(3))
-            .RuleFor(e => e.Subtitle, _ => _faker.Lorem.Sentence(5))
-            .RuleFor(e => e.Description, _ => _faker.Lorem.Paragraph(2))
-            .RuleFor(e => e.Url, _ => _faker.Internet.Url())
-            .RuleFor(e => e.UrlDescription, _ => _faker.Lorem.Sentence(4))
+            .RuleFor(e => e.Title, f => f.Lorem.Sentence(3))
+            .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5))
+            .RuleFor(e => e.Description, f => f.Lorem.Paragraph(2))
+            .RuleFor(e => e.Url, f => f.Internet.Url())
+            .RuleFor(e => e.UrlDescription, f => f.Lorem.Sentence(4))
             .RuleFor(e => e.EpisodeType, EpisodeType.Incident)
             .RuleFor(e => e.StartPrecision, DatePrecision.Day)
             .RuleFor(e => e.EndPrecision, DatePrecision.Day)
-            .RuleFor(e => e.Start, _ => _faker.Date.BetweenDateOnly(request.Min, request.Max))
-            .RuleFor(e => e.End, _ => _faker.Date.BetweenDateOnly(request.Min, request.Max))
-            .RuleFor(e => e.CategoryIds, _ => [_faker.PickRandom(request.Categories).CategoryId])
+            .RuleFor(e => e.Start, f => f.Date.BetweenDateOnly(request.Min, request.Max))
+            .RuleFor(e => e.End, f => f.Date.BetweenDateOnly(request.Min, request.Max))
+            .RuleFor(e => e.Indefinite, false)
+            .RuleFor(e => e.CategoryIds, f => [f.PickRandom(request.Categories).CategoryId])
             ;
 
         var episodeCount = 0;
@@ -133,17 +135,21 @@ public class RandomTimelineProvider
 
             var start = _faker.Date.BetweenDateOnly(request.Min, DateTime.Today.ToDateOnly());
             var episodeType = _randomizer.Enum<EpisodeType>();
+            var indefinite = episodeType == EpisodeType.Era && _randomizer.Bool(0.15f);
             var end = episodeType == EpisodeType.Incident ? start : start.AddMonths(_randomizer.Int(1, 120));
 
             if(end > request.Max)
                 end = request.Max;
 
+            if(indefinite)
+                end = DateOnly.MaxValue;
+
             yield return episode with
             {
                 EpisodeType = episodeType,
-                Duration = end.Difference(start).Days,
                 Start = start,
-                End = end
+                End = end,
+                Indefinite = indefinite
             };
             episodeCount++;
         }

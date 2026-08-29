@@ -41,12 +41,10 @@ app.MapGet("/timelinesummaries", async () =>
         return Results.Ok(summaries);
     })
     .WithDisplayName("Get all timeline summaries")
-    .WithOpenApi()
     .Produces<IEnumerable<TimelineSummary>>();
 
 app.MapGet("/timelines", async () => await timelineProvider.GetAllAsync())
     .WithDisplayName("Get all timelines")
-    .WithOpenApi()
     .Produces<IEnumerable<Timeline>>();
 
 app.MapGet("/timelines/random", () =>
@@ -56,7 +54,6 @@ app.MapGet("/timelines/random", () =>
         return Results.Ok(timelines);
     })
     .WithDisplayName("Get random timelines")
-    .WithOpenApi()
     .Produces<IEnumerable<Timeline>>();
 
 app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
@@ -67,7 +64,6 @@ app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
             : Results.Ok(timeline.Value);
     })
     .WithDisplayName("Get a timeline by ID")
-    .WithOpenApi()
     .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -77,7 +73,6 @@ app.MapGet("/timeline/random", () =>
         return Results.Ok(timeline);
     })
     .WithDisplayName("Get a random timeline")
-    .WithOpenApi()
     .Produces<Timeline>();
 
 app.MapPut("/timeline", async (
@@ -98,7 +93,6 @@ app.MapPut("/timeline", async (
             : Results.NoContent();
     })
     .WithDisplayName("Update a timeline's information")
-    .WithOpenApi()
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
@@ -114,7 +108,6 @@ app.MapGet("/categories/{id:guid}", async ([FromRoute]Guid id) =>
             : Results.Ok(categories.Value);
     })
     .WithDisplayName("Get all categories for a timeline")
-    .WithOpenApi()
     .Produces<IEnumerable<Category>>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -127,7 +120,6 @@ app.MapGet("/category/{id:guid}", async ([FromRoute]Guid id) =>
             : Results.Ok(category.Value);
     })
     .WithDisplayName("Get a category by ID")
-    .WithOpenApi()
     .Produces<Category>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -148,7 +140,6 @@ app.MapPost("/category", async (
             : Results.CreatedAtRoute($"/categories/{newCategory.Value.CategoryId}");
     })
     .WithDisplayName("Create a new category")
-    .WithOpenApi()
     .Produces(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
@@ -169,7 +160,6 @@ app.MapPut("/category", async (
             : Results.NoContent();
     })
     .WithDisplayName("Update a category")
-    .WithOpenApi()
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
@@ -185,7 +175,6 @@ app.MapGet("/episodes/{id:guid}", async ([FromRoute]Guid id) =>
             : Results.Ok(episode.Value);
     })
     .WithDisplayName("Get an episode by ID")
-    .WithOpenApi()
     .Produces<Episode>()
     .Produces(StatusCodes.Status404NotFound);
 
@@ -205,7 +194,6 @@ app.MapPost("/episode", async (
             : Results.CreatedAtRoute($"/episodes/{newEpisode.Value.EpisodeId}");
     })
     .WithDisplayName("Create a new episode")
-    .WithOpenApi()
     .Produces(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
@@ -226,7 +214,6 @@ app.MapPut("/episode", async (
             : Results.NoContent();
     })
     .WithDisplayName("Update an episode")
-    .WithOpenApi()
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 

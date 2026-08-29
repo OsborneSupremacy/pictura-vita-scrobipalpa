@@ -129,7 +129,8 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             TimelineId = timeline.TimelineId,
             Confidentiality = Confidentiality.Public,
             Title = "Test Category",
-            Subtitle = "Test Subtitle"
+            Subtitle = "Test Subtitle",
+            SortOrder = 0
         };
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
 

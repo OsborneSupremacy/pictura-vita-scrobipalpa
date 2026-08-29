@@ -11,5 +11,7 @@ internal class InsertCategoryRequestValidator : AbstractValidator<InsertCategory
         RuleFor(x => x.Confidentiality)
             .NotEqual(Confidentiality.Inherit)
             .WithMessage("A category cannot inherit confidentiality.");
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0);
     }
 }

@@ -24,5 +24,7 @@ public record InsertEpisodeRequest
 
     public required DateOnly End { get; init; }
 
+    public required bool Indefinite { get; init; }
+
     public required IList<Guid> CategoryIds { get; init; }
 }

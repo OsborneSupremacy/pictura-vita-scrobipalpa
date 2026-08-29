@@ -1,21 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="ClosedXML" Version="0.104.2" />
-      <PackageReference Include="dotenv.net" Version="3.2.1" />
-      <PackageReference Include="Spectre.Console" Version="0.49.1" />
+      <PackageReference Include="ClosedXML" Version="0.105.1" />
+      <PackageReference Include="dotenv.net" Version="4.0.2" />
+      <PackageReference Include="Spectre.Console" Version="0.57.2" />
     </ItemGroup>
 
     <ItemGroup>
       <None Remove=".env" />
-      <Content Include=".env">
+      <!-- .env is gitignored; a fresh clone has none until one is copied from .env.example -->
+      <Content Include=".env" Condition="Exists('.env')">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
     </ItemGroup>

@@ -17,4 +17,9 @@ internal record Occurrence
     public required DateOnly EndDate { get; init; }
 
     public required string Group { get; init; }
+
+    /// <summary>
+    /// True when the source row left the end date blank, meaning the occurrence is ongoing.
+    /// </summary>
+    public bool Indefinite => EndDate == DateOnly.MaxValue;
 }

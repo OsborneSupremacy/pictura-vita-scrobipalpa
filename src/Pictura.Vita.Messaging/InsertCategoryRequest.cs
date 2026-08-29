@@ -1,4 +1,4 @@
-﻿namespace Pictura.Vita.Messaging;
+namespace Pictura.Vita.Messaging;
 
 public record InsertCategoryRequest
 {
@@ -9,4 +9,6 @@ public record InsertCategoryRequest
     public required string Subtitle { get; init; }
 
     public required Confidentiality Confidentiality { get; init; }
+
+    public required int SortOrder { get; init; }
 }

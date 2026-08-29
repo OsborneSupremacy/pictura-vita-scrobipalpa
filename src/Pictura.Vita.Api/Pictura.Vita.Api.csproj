@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="dotenv.net" Version="3.2.1" />
-        <PackageReference Include="FluentValidation" Version="11.11.0" />
-        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
-        <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1"/>
-        <PackageReference Include="Scalar.AspNetCore" Version="2.0.4" />
+        <PackageReference Include="dotenv.net" Version="4.0.2" />
+        <PackageReference Include="FluentValidation" Version="12.1.1" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+        <PackageReference Include="JsonFlatFileDataStore" Version="2.4.3" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -22,7 +22,8 @@
 
     <ItemGroup>
       <None Remove=".env" />
-      <Content Include=".env">
+      <!-- .env is gitignored; a fresh clone has none until one is copied from .env.example -->
+      <Content Include=".env" Condition="Exists('.env')">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
     </ItemGroup>
