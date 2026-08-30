@@ -42,7 +42,8 @@ public class RandomTimelineProvider
                 Subtitle = _faker.Lorem.Sentence(3),
                 Confidentiality = _randomizer.Enum<Confidentiality>(),
                 SortOrder = index,
-                Icon = string.Empty
+                Icon = string.Empty,
+                Color = string.Empty
             })
             .ToList();
 

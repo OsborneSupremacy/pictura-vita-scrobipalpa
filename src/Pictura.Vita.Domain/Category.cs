@@ -24,4 +24,13 @@ public record Category
     /// the file.
     /// </summary>
     public required string Icon { get; init; }
+
+    /// <summary>
+    /// The band's colour as a six-digit hex value, for example "#1e5799". Empty means the
+    /// colour is chosen automatically from the band's position.
+    ///
+    /// One base colour is stored rather than a gradient and a text colour: both are derived
+    /// when drawing, so the look can change without rewriting anyone's data.
+    /// </summary>
+    public required string Color { get; init; }
 }

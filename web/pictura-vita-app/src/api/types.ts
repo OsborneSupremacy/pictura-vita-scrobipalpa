@@ -25,6 +25,8 @@ export interface ApiCategory {
   sortOrder: number;
   /** Lucide kebab-case name; empty for none. Null in files written before icons existed. */
   icon: string;
+  /** Six-digit hex, or empty to colour the band by its position. */
+  color: string;
 }
 
 export interface ApiEpisode {
@@ -101,6 +103,7 @@ export interface InsertCategoryRequest {
   confidentiality: number;
   sortOrder: number;
   icon: string;
+  color: string;
 }
 
 export interface UpdateCategoryRequest {

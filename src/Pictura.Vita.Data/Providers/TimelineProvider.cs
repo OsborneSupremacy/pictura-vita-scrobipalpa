@@ -131,7 +131,8 @@ public class TimelineProvider
             Title = request.Title,
             Subtitle = request.Subtitle,
             SortOrder = request.SortOrder,
-            Icon = request.Icon
+            Icon = request.Icon,
+            Color = request.Color
         };
 
         timeline.Value.Categories.Add(newCategory);
@@ -160,7 +161,8 @@ public class TimelineProvider
             Title = request.Category.Title,
             Subtitle = request.Category.Subtitle,
             SortOrder = request.Category.SortOrder,
-            Icon = request.Category.Icon
+            Icon = request.Category.Icon,
+            Color = request.Category.Color
         });
 
         await _collection

@@ -888,7 +888,8 @@
           "subtitle": "Natus nisi fugit.",
           "confidentiality": 1,
           "sortOrder": 2,
-          "icon": "users"
+          "icon": "users",
+          "color": "#e52d2d"
         },
         {
           "categoryId": "01979e65-0ab5-7b39-9331-a30b59bad94b",
@@ -896,7 +897,8 @@
           "subtitle": "Ut possimus aut.",
           "confidentiality": 0,
           "sortOrder": 4,
-          "icon": "handshake"
+          "icon": "handshake",
+          "color": "#5d22aa"
         },
         {
           "categoryId": "01979e65-0ab5-7a23-96b0-ea9c7f639970",
@@ -904,7 +906,8 @@
           "subtitle": "Possimus sed eius.",
           "confidentiality": 0,
           "sortOrder": 9,
-          "icon": "briefcase"
+          "icon": "briefcase",
+          "color": "#7c2d12"
         },
         {
           "categoryId": "01979e65-0ab5-7ab7-ac75-ffbe08973ade",
@@ -912,7 +915,8 @@
           "subtitle": "Commodi ex repudiandae.",
           "confidentiality": 1,
           "sortOrder": 1,
-          "icon": "graduation-cap"
+          "icon": "graduation-cap",
+          "color": "#20a020"
         },
         {
           "categoryId": "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf",
@@ -920,7 +924,8 @@
           "subtitle": "Et culpa non.",
           "confidentiality": 2,
           "sortOrder": 8,
-          "icon": "plane"
+          "icon": "plane",
+          "color": "#be185d"
         },
         {
           "categoryId": "01979e65-0ab5-7fa0-a6f3-b2603cc0808e",
@@ -928,7 +933,8 @@
           "subtitle": "Recusandae aspernatur consectetur.",
           "confidentiality": 3,
           "sortOrder": 6,
-          "icon": "palette"
+          "icon": "palette",
+          "color": "#4c4c4c"
         },
         {
           "categoryId": "01979e65-0ab5-732f-bc56-1b115b32a1c2",
@@ -936,7 +942,8 @@
           "subtitle": "Est et aut.",
           "confidentiality": 1,
           "sortOrder": 5,
-          "icon": "stethoscope"
+          "icon": "stethoscope",
+          "color": "#a8a820"
         },
         {
           "categoryId": "01979e65-0ab5-73af-aafe-593e7275a66d",
@@ -944,7 +951,8 @@
           "subtitle": "Ab recusandae occaecati.",
           "confidentiality": 1,
           "sortOrder": 3,
-          "icon": "banknote"
+          "icon": "banknote",
+          "color": "#c97800"
         },
         {
           "categoryId": "01979e65-0ab5-7398-978c-e2b59c67e261",
@@ -952,7 +960,8 @@
           "subtitle": "Voluptates et cum.",
           "confidentiality": 1,
           "sortOrder": 0,
-          "icon": "trophy"
+          "icon": "trophy",
+          "color": "#1e5799"
         },
         {
           "categoryId": "01979e65-0ab5-718c-b677-4800e9122753",
@@ -960,7 +969,8 @@
           "subtitle": "Dolores magni aut.",
           "confidentiality": 3,
           "sortOrder": 7,
-          "icon": "tag"
+          "icon": "tag",
+          "color": "#0f766e"
         }
       ]
     }

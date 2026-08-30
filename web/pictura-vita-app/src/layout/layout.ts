@@ -352,6 +352,7 @@ function buildBand(
     categoryId: category.categoryId,
     title: category.title,
     icon: category.icon,
+    color: category.color,
     colorIndex,
     eraRails,
     // Incident rails alternate above and below the band, as the original did.

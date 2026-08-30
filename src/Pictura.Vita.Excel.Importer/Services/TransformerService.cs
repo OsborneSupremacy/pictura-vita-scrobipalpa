@@ -37,8 +37,9 @@ internal static class TransformerService
                 Subtitle = string.Empty,
                 Confidentiality = Confidentiality.OnlyMe,
                 SortOrder = index,
-                // The spreadsheet carries no icon; they are chosen in the app.
-                Icon = string.Empty
+                // The spreadsheet carries neither; both are chosen in the app.
+                Icon = string.Empty,
+                Color = string.Empty
             })
             .ToList();
 

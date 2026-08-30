@@ -21,6 +21,7 @@ const category = (
   categoryId: id,
   title,
   icon: '',
+  color: '',
   sortOrder,
   confidentiality
 });

@@ -14,5 +14,10 @@ internal class InsertCategoryRequestValidator : AbstractValidator<InsertCategory
         RuleFor(x => x.SortOrder)
             .GreaterThanOrEqualTo(0);
         RuleFor(x => x.Icon).NotNull();
+        RuleFor(x => x.Color).NotNull();
+        RuleFor(x => x.Color)
+            .Matches("^#[0-9a-fA-F]{6}$")
+            .When(x => !string.IsNullOrEmpty(x.Color))
+            .WithMessage("Colour must be a six-digit hex value such as #1e5799.");
     }
 }

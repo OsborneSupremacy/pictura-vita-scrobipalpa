@@ -13,4 +13,6 @@ public record InsertCategoryRequest
     public required int SortOrder { get; init; }
 
     public required string Icon { get; init; }
+
+    public required string Color { get; init; }
 }

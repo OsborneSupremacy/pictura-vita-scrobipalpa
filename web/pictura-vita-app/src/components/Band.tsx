@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { CategoryBand, Rail, TimeItem } from '../layout';
 import { CategoryIcon } from '../icons/CategoryIcon';
+import { barStyle } from '../color/contrast';
+import { fallbackColor } from '../color/palette';
 
 interface Props {
   band: CategoryBand;
@@ -123,8 +125,14 @@ function RailRow({
 }
 
 export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
+  // A stored colour wins; otherwise the band falls back to its position, as before.
+  const { gradient, text } = barStyle(band.color || fallbackColor(band.colorIndex));
+
   return (
-    <section className={`band cat-${band.colorIndex}`}>
+    <section
+      className="band"
+      style={{ '--band-gradient': gradient, '--band-text': text } as CSSProperties}
+    >
       {/* Header first, then the callouts that sit above the bars: a callout rendered
           before its own heading reads as belonging to the band above it. */}
       <h2 className="band-title">

@@ -38,8 +38,9 @@ export function toLayoutCategory(category: ApiCategory): LayoutCategory {
   return {
     categoryId: category.categoryId,
     title: category.title,
-    // Null in data written before icons existed; an absent icon is simply no icon.
+    // Null in data written before these existed; absent means "not chosen".
     icon: category.icon ?? '',
+    color: category.color ?? '',
     sortOrder: category.sortOrder,
     // The API rejects a category set to Inherit, so anything stored is already resolved.
     confidentiality: category.confidentiality as ResolvedConfidentiality

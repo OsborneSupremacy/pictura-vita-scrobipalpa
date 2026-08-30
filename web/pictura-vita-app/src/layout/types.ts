@@ -50,6 +50,8 @@ export interface LayoutCategory {
   title: string;
   /** Icon name to draw beside the band heading; empty for none. */
   icon: string;
+  /** Explicit band colour; empty to fall back to `colorIndex`. */
+  color: string;
   sortOrder: number;
   /** A category cannot inherit; it is the thing episodes inherit from. */
   confidentiality: ResolvedConfidentiality;
@@ -156,6 +158,12 @@ export interface CategoryBand {
   categoryId: string;
   title: string;
   icon: string;
+  /** Empty when the category has no colour of its own; use `colorIndex` then. */
+  color: string;
+  /**
+   * Position among the drawn bands, used only when `color` is empty. A category with a
+   * colour keeps it wherever it is moved to.
+   */
   colorIndex: number;
   eraRails: Rail[];
   /** Incident rails drawn above the era rails, arrows pointing down. */

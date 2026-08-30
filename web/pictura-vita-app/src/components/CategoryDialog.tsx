@@ -3,6 +3,8 @@ import { api } from '../api/client';
 import { Confidentiality, type ApiCategory, type ApiTimeline } from '../api/types';
 import { removalImpact, totalOrphaned } from './categoryImpact';
 import { IconPicker } from './IconPicker';
+import { ColorPicker } from './ColorPicker';
+import { fallbackColor } from '../color/palette';
 
 interface Props {
   timeline: ApiTimeline;
@@ -20,6 +22,7 @@ interface Row {
   confidentiality: number;
   sortOrder: number;
   icon: string;
+  color: string;
   isNew: boolean;
 }
 
@@ -31,8 +34,9 @@ const LEVELS = [
 
 const toRow = (category: ApiCategory): Row => ({
   ...category,
-  // Null in files written before icons existed.
+  // Null in files written before these existed.
   icon: category.icon ?? '',
+  color: category.color ?? '',
   key: category.categoryId,
   isNew: false
 });
@@ -78,6 +82,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
         // Superseded on save by the row's position; only a placeholder until then.
         sortOrder: current.length,
         icon: '',
+        color: '',
         isNew: true
       }
     ]);
@@ -136,7 +141,8 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
             subtitle: row.subtitle,
             confidentiality: row.confidentiality,
             sortOrder,
-            icon: row.icon
+            icon: row.icon,
+            color: row.color
           });
           continue;
         }
@@ -148,6 +154,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
             before.subtitle !== row.subtitle ||
             before.confidentiality !== row.confidentiality ||
             (before.icon ?? '') !== row.icon ||
+            (before.color ?? '') !== row.color ||
             before.sortOrder !== sortOrder);
 
         if (changed) {
@@ -159,7 +166,8 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
               subtitle: row.subtitle,
               confidentiality: row.confidentiality,
               sortOrder,
-              icon: row.icon
+              icon: row.icon,
+              color: row.color
             }
           });
         }
@@ -222,6 +230,13 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
                     value={row.icon}
                     disabled={marked}
                     onChange={icon => set(index, { icon })}
+                  />
+
+                  <ColorPicker
+                    value={row.color}
+                    fallback={fallbackColor(index)}
+                    disabled={marked}
+                    onChange={color => set(index, { color })}
                   />
 
                   <input

@@ -175,7 +175,8 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Title = "Test Category",
             Subtitle = "Test Subtitle",
             SortOrder = 0,
-            Icon = "star"
+            Icon = "star",
+            Color = "#1e5799"
         };
         var sut = new TimelineProvider(_dataStoreFixture.DataStore);
 
@@ -245,7 +246,8 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Subtitle = string.Empty,
             Confidentiality = Confidentiality.Public,
             SortOrder = 99,
-            Icon = "briefcase"
+            Icon = "briefcase",
+            Color = ""
         });
 
         // assert - reopening the file is the only check that catches a write which only ever
