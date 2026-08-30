@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../api/client';
 import { Confidentiality, type ApiCategory, type ApiTimeline } from '../api/types';
 import { removalImpact, totalOrphaned } from './categoryImpact';
@@ -213,7 +214,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
                       title="Move up"
                       aria-label={`Move ${row.title || 'this category'} up`}
                     >
-                      ↑
+                      <ChevronUp size={16} strokeWidth={2} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -222,7 +223,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
                       title="Move down"
                       aria-label={`Move ${row.title || 'this category'} down`}
                     >
-                      ↓
+                      <ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
                     </button>
                   </span>
 

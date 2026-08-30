@@ -272,6 +272,8 @@ main { padding: 16px 20px 40px; }
   list-style: none;
   max-height: 46vh;
   overflow-y: auto;
+  /* Keeps the vertical scrollbar from eating into the last column. */
+  padding-right: 6px;
 }
 
 .category-rows > li { padding: 4px 0; border-bottom: 1px solid var(--page); }
@@ -279,14 +281,21 @@ main { padding: 16px 20px 40px; }
 
 .category-row {
   display: grid;
-  grid-template-columns: auto auto auto 1fr 120px auto;
-  gap: 8px;
+  /* minmax(0, 1fr) rather than 1fr: an input's default intrinsic width is wide enough to
+     push the row past the dialog otherwise, which is what forced sideways scrolling. */
+  grid-template-columns: auto auto auto minmax(0, 1fr) 112px auto;
+  gap: 6px;
   align-items: center;
 }
 
 .reorder { display: flex; gap: 2px; }
 
-.reorder button {
+/* Scoped past `.category-row button` below, which otherwise wins on source order and
+   pads these down to a 4px-wide box. */
+.category-row .reorder button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 26px;
   padding: 0;
@@ -300,11 +309,14 @@ main { padding: 16px 20px 40px; }
   cursor: pointer;
 }
 
-.reorder button:hover:not(:disabled) { background: var(--page); }
-.reorder button:disabled { opacity: 0.35; cursor: default; }
+.category-row .reorder svg { flex: none; }
+
+.category-row .reorder button:hover:not(:disabled) { background: var(--page); }
+.category-row .reorder button:disabled { opacity: 0.35; cursor: default; }
 
 .category-row input,
 .category-row select {
+  min-width: 0;
   padding: 5px 8px;
   font: inherit;
   color: var(--ink);
@@ -316,7 +328,8 @@ main { padding: 16px 20px 40px; }
 .category-rows > li.marked .category-row input { text-decoration: line-through; }
 
 .category-row button {
-  padding: 5px 10px;
+  padding: 5px 8px;
+  white-space: nowrap;
   font: inherit;
   font-size: 12px;
   border: 1px solid var(--line);
