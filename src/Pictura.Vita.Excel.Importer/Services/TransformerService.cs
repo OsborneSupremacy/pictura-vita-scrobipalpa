@@ -58,6 +58,13 @@ internal static class TransformerService
                 Description = occurrence.Description2,
                 Url = occurrence.Url,
                 UrlDescription = occurrence.UrlDescription,
+                // An unusable name is stored as "no image" rather than passed through: the
+                // store should never hold a name the API would refuse to serve. The row is
+                // reported as a warning, not dropped — losing a life event over a misspelled
+                // .jpg would be a poor trade.
+                ImageName = ImageFileName.IsValid(occurrence.ImageName)
+                    ? occurrence.ImageName
+                    : string.Empty,
                 EpisodeType = !occurrence.Indefinite && occurrence.StartDate == occurrence.EndDate
                     ? EpisodeType.Incident
                     : EpisodeType.Era,

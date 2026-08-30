@@ -36,6 +36,8 @@ export interface LayoutEpisode {
   description: string;
   url: string;
   urlDescription: string;
+  /** File name of the episode's image; empty for none. */
+  imageName: string;
   kind: EpisodeKind;
   /** Inclusive. */
   start: DayNumber;
@@ -73,6 +75,15 @@ export interface LayoutInput {
   maxConfidentiality: ResolvedConfidentiality;
   /** Categories to draw. Null draws all of them. */
   visibleCategoryIds: ReadonlySet<string> | null;
+  /**
+   * Image file names known to exist on disk, from `GET /timeline/{id}/images`.
+   *
+   * Omitting it means none are known, so nothing draws a thumbnail. That is the safe
+   * default: a name in the store is a claim about a filesystem this module cannot see, and
+   * acting on an unverified one is what produces a broken image and a box that collapses
+   * after the fact.
+   */
+  availableImageNames?: ReadonlySet<string>;
 }
 
 /** Layout output types. */
@@ -144,6 +155,15 @@ export interface TimeItem {
   targetRailIndex: number | null;
   /** A synthetic full-width era, drawn when a category has incidents but no eras. */
   reference: boolean;
+  /**
+   * File name of the thumbnail to draw in this box, or null for none.
+   *
+   * Non-null only when all three hold: the episode names an image, the name is known to
+   * exist, and the box came out wide enough to hold one. Callers can therefore draw it
+   * unconditionally — "no image", "missing image" and "too small for an image" have already
+   * collapsed into the same null.
+   */
+  imageName: string | null;
 }
 
 export type RailKind = 'era' | 'incident';

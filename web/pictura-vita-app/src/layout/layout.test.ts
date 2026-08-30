@@ -5,7 +5,8 @@ import {
   buildLayout,
   filterByConfidentiality,
   PALETTE_SIZE,
-  SLIVER_THRESHOLD_PX
+  SLIVER_THRESHOLD_PX,
+  THUMBNAIL_MIN_WIDTH_PX
 } from './layout';
 import { Confidentiality } from './types';
 import type { LayoutCategory, LayoutEpisode, Rail, ResolvedConfidentiality } from './types';
@@ -35,6 +36,7 @@ const episode = (overrides: Partial<LayoutEpisode> & Pick<LayoutEpisode, 'start'
   description: '',
   url: '',
   urlDescription: '',
+  imageName: '',
   kind: 'era',
   end: overrides.start,
   indefinite: false,
@@ -683,5 +685,101 @@ describe('deriveWindow', () => {
 
   it('falls back to a single-day window when there are no episodes', () => {
     expect(deriveWindow([], today)).toEqual({ floor: today, ceiling: today });
+  });
+});
+
+describe('episode thumbnails', () => {
+  const withImage = (
+    start: string,
+    end: string,
+    imageName = 'photo.jpg',
+    kind: 'era' | 'incident' = 'era'
+  ) => episode({ start: day(start), end: day(end), imageName, kind });
+
+  const build = (
+    episodes: LayoutEpisode[],
+    availableImageNames?: ReadonlySet<string>
+  ) =>
+    buildLayout({
+      categories: [category('work', 0)],
+      episodes,
+      ...WINDOW,
+      // Spread rather than assigned: under exactOptionalPropertyTypes an explicit
+      // `undefined` is not the same as an absent key, and "absent" is the case being tested.
+      ...(availableImageNames ? { availableImageNames } : {}),
+      totalWidth: 1000
+    });
+
+  const eraItems = (layout: ReturnType<typeof build>) =>
+    layout.bands[0]!.eraRails.flatMap(drawn);
+
+  const calloutItems = (layout: ReturnType<typeof build>) =>
+    [...layout.bands[0]!.incidentRailsAbove, ...layout.bands[0]!.incidentRailsBelow].flatMap(drawn);
+
+  it('draws a thumbnail on an era wide enough to hold one', () => {
+    const layout = build([withImage('2001-01-01', '2004-12-31')], new Set(['photo.jpg']));
+
+    const era = eraItems(layout)[0]!;
+    expect(era.width).toBeGreaterThanOrEqual(THUMBNAIL_MIN_WIDTH_PX);
+    expect(era.imageName).toBe('photo.jpg');
+  });
+
+  it('omits the thumbnail on an era too narrow to hold one', () => {
+    // Roughly 50px in this window, which is above the sliver threshold but well below the
+    // width an image needs.
+    const layout = build([withImage('2001-01-01', '2001-06-30')], new Set(['photo.jpg']));
+
+    const era = eraItems(layout)[0]!;
+    expect(era.width).toBeLessThan(THUMBNAIL_MIN_WIDTH_PX);
+    expect(era.sliver).toBe(false);
+    expect(era.imageName).toBeNull();
+  });
+
+  it('gives the supplemental callout the image its era was too narrow for', () => {
+    const layout = build([withImage('2001-01-01', '2001-06-30')], new Set(['photo.jpg']));
+
+    // The callout is where the narrow era's label went, so it is where the picture goes too.
+    expect(calloutItems(layout)[0]!.imageName).toBe('photo.jpg');
+  });
+
+  it('draws a thumbnail on an incident, whose callout is a fixed width', () => {
+    const layout = build(
+      [withImage('2003-05-05', '2003-05-05', 'photo.jpg', 'incident')],
+      new Set(['photo.jpg'])
+    );
+
+    expect(calloutItems(layout)[0]!.imageName).toBe('photo.jpg');
+  });
+
+  it('ignores a name that is not on disk', () => {
+    const layout = build([withImage('2001-01-01', '2004-12-31')], new Set(['something-else.jpg']));
+
+    expect(eraItems(layout)[0]!.imageName).toBeNull();
+  });
+
+  it('draws nothing when the episode names no image', () => {
+    const layout = build([withImage('2001-01-01', '2004-12-31', '')], new Set(['photo.jpg']));
+
+    expect(eraItems(layout)[0]!.imageName).toBeNull();
+  });
+
+  it('draws nothing when the caller did not say which images exist', () => {
+    // The safe default: a stored name is a claim about a filesystem the layout cannot see.
+    const layout = build([withImage('2001-01-01', '2004-12-31')]);
+
+    expect(eraItems(layout)[0]!.imageName).toBeNull();
+  });
+
+  it('never puts an image on a reference bar', () => {
+    const layout = build(
+      [withImage('2003-05-05', '2003-05-05', 'photo.jpg', 'incident')],
+      new Set(['photo.jpg'])
+    );
+
+    // A category with only incidents gets a synthetic full-width bar; there is no episode
+    // behind it to take an image from.
+    const reference = eraItems(layout).find(item => item.reference);
+    expect(reference).toBeDefined();
+    expect(reference!.imageName).toBeNull();
   });
 });

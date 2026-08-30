@@ -13,11 +13,14 @@
         <PackageReference Include="JsonFlatFileDataStore" Version="2.4.3" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
+        <PackageReference Include="SkiaSharp" Version="4.151.1" />
+        <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.151.1" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Pictura.Vita.Data\Pictura.Vita.Data.csproj" />
       <ProjectReference Include="..\Pictura.Vita.Domain\Pictura.Vita.Domain.csproj" />
+      <ProjectReference Include="..\Pictura.Vita.Utility\Pictura.Vita.Utility.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -22,6 +22,14 @@ internal record Occurrence
     public required string Group { get; init; }
 
     /// <summary>
+    /// File name of the row's image, for example "kalamazoo-house.jpg"; blank for none.
+    ///
+    /// Deliberately absent from <see cref="NaturalKey"/>: attaching or changing a photo must
+    /// not mint a new episode id and orphan everything already pointing at the old one.
+    /// </summary>
+    public required string ImageName { get; init; }
+
+    /// <summary>
     /// True when the source row left the end date blank, meaning the occurrence is ongoing.
     /// </summary>
     public bool Indefinite => EndDate == DateOnly.MaxValue;

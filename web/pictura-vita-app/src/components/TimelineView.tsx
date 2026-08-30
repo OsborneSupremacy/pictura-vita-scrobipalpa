@@ -21,11 +21,13 @@ import { FilterControls } from './FilterControls';
 interface Props {
   timeline: ApiTimeline;
   today: DayNumber;
+  /** Image file names present on disk, from the API. */
+  availableImages: readonly string[];
   /** Called after an edit lands, so the owner can refetch. */
   onChanged: () => void;
 }
 
-export function TimelineView({ timeline, today, onChanged }: Props) {
+export function TimelineView({ timeline, today, availableImages, onChanged }: Props) {
   const [surfaceRef, width] = useElementWidth<HTMLDivElement>();
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<{ floor: DayNumber; ceiling: DayNumber } | null>(null);
@@ -59,6 +61,8 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
 
   const episodes = useMemo(() => timeline.episodes.map(toLayoutEpisode), [timeline]);
   const categories = useMemo(() => timeline.categories.map(toLayoutCategory), [timeline]);
+
+  const availableImageNames = useMemo(() => new Set(availableImages), [availableImages]);
 
   const byId = useMemo(
     () => new Map(timeline.episodes.map(episode => [episode.episodeId, episode])),
@@ -99,9 +103,10 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
         ...window,
         maxConfidentiality,
         visibleCategoryIds,
+        availableImageNames,
         totalWidth: width
       }),
-    [episodes, categories, window, maxConfidentiality, visibleCategoryIds, width]
+    [episodes, categories, window, maxConfidentiality, visibleCategoryIds, availableImageNames, width]
   );
 
   const toggleCategory = useCallback((categoryId: string) => {
@@ -119,6 +124,21 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
       ),
     [categories]
   );
+
+  const detailEpisode = selected
+    ? selected.item.supplementOf
+      ? byId.get(selected.item.supplementOf)
+      : selected.item.episodeId
+        ? byId.get(selected.item.episodeId)
+        : undefined
+    : undefined;
+
+  // The panel shows an image whenever one exists, with no width threshold: unlike a bar on
+  // the timeline, the panel is the same size however narrow the episode it describes.
+  const detailImageName =
+    detailEpisode?.imageName && availableImageNames.has(detailEpisode.imageName)
+      ? detailEpisode.imageName
+      : null;
 
   // Zooming is pure client-side recomputation. The original refetched from the server
   // on every zoom; the layout is a pure function, so there is nothing to fetch.
@@ -172,6 +192,7 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
               <Band
                 key={band.categoryId}
                 band={band}
+                timelineId={timeline.timelineId}
                 selectedKey={selected?.item.key ?? null}
                 onSelect={select}
                 onAdd={categoryId => setDialogMode({ kind: 'add', categoryIds: [categoryId] })}
@@ -186,16 +207,15 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
         <DetailPanel
           key={selected.item.key}
           item={selected.item}
-          episode={
-            selected.item.supplementOf
-              ? byId.get(selected.item.supplementOf)
-              : selected.item.episodeId
-                ? byId.get(selected.item.episodeId)
-                : undefined
-          }
+          episode={detailEpisode}
           anchor={selected.anchor}
           containerWidth={width}
           today={today}
+          timelineId={timeline.timelineId}
+          // Resolved here rather than in the panel so a name pointing at nothing is
+          // indistinguishable from no name by the time anything renders.
+          imageName={detailImageName}
+
           onClose={() => setSelected(null)}
           onZoom={onZoom}
           onEdit={episodeToEdit => {
@@ -210,6 +230,7 @@ export function TimelineView({ timeline, today, onChanged }: Props) {
           timeline={timeline}
           mode={dialogMode}
           today={today}
+          availableImages={availableImages}
           onChanged={() => {
             setDialogMode(null);
             onChanged();

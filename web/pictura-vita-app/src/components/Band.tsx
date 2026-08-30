@@ -1,11 +1,13 @@
 import type { CSSProperties } from 'react';
 import type { CategoryBand, Rail, TimeItem } from '../layout';
 import { CategoryIcon } from '../icons/CategoryIcon';
+import { imageUrl } from '../api/client';
 import { barStyle } from '../color/contrast';
 import { fallbackColor } from '../color/palette';
 
 interface Props {
   band: CategoryBand;
+  timelineId: string;
   selectedKey: string | null;
   onSelect: (item: TimeItem, element: HTMLElement) => void;
   onAdd: (categoryId: string) => void;
@@ -61,10 +63,12 @@ function Connector({
 
 function ItemBox({
   item,
+  timelineId,
   selected,
   onSelect
 }: {
   item: TimeItem;
+  timelineId: string;
   selected: boolean;
   onSelect: (item: TimeItem, element: HTMLElement) => void;
 }) {
@@ -80,6 +84,23 @@ function ItemBox({
       title={item.title}
       onClick={event => onSelect(item, event.currentTarget)}
     >
+      {/* The layout has already decided this: it is non-null only for an image that exists
+          in a box wide enough to hold it. The onError is for the narrow case where the file
+          is removed between listing and drawing — it leaves a gap rather than the browser's
+          broken-image glyph, so a missing picture looks like no picture. */}
+      {item.imageName && (
+        <img
+          className="item-thumb"
+          src={imageUrl(timelineId, item.imageName, 'thumb')}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={event => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      )}
+
       {!item.sliver && (
         <span className="labels">
           <span className="title">{item.title}</span>
@@ -92,6 +113,7 @@ function ItemBox({
 
 function RailRow({
   rail,
+  timelineId,
   connect,
   calloutRailsToCross = 0,
   eraRailCount = 1,
@@ -99,6 +121,7 @@ function RailRow({
   onSelect
 }: {
   rail: Rail;
+  timelineId: string;
   connect?: 'up' | 'down';
   calloutRailsToCross?: number;
   eraRailCount?: number;
@@ -109,7 +132,12 @@ function RailRow({
     <div className={`rail rail-${rail.kind}`}>
       {rail.items.map(item => (
         <div key={item.key} className="rail-cell" style={{ width: `${item.width}px` }}>
-          <ItemBox item={item} selected={item.key === selectedKey} onSelect={onSelect} />
+          <ItemBox
+            item={item}
+            timelineId={timelineId}
+            selected={item.key === selectedKey}
+            onSelect={onSelect}
+          />
           {connect && item.kind !== 'placeholder' && (
             <Connector
               item={item}
@@ -124,7 +152,7 @@ function RailRow({
   );
 }
 
-export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
+export function Band({ band, timelineId, selectedKey, onSelect, onAdd }: Props) {
   // A stored colour wins; otherwise the band falls back to its position, as before.
   const { gradient, text } = barStyle(band.color || fallbackColor(band.colorIndex));
 
@@ -153,6 +181,7 @@ export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
         <RailRow
           key={rail.key}
           rail={rail}
+          timelineId={timelineId}
           connect="down"
           // The topmost rail is furthest from the bars and has the most rails to cross.
           calloutRailsToCross={rails.length - 1 - index}
@@ -163,13 +192,20 @@ export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
       ))}
 
       {band.eraRails.map(rail => (
-        <RailRow key={rail.key} rail={rail} selectedKey={selectedKey} onSelect={onSelect} />
+        <RailRow
+          key={rail.key}
+          rail={rail}
+          timelineId={timelineId}
+          selectedKey={selectedKey}
+          onSelect={onSelect}
+        />
       ))}
 
       {band.incidentRailsBelow.map((rail, index) => (
         <RailRow
           key={rail.key}
           rail={rail}
+          timelineId={timelineId}
           connect="up"
           calloutRailsToCross={index}
           eraRailCount={band.eraRails.length}

@@ -25,6 +25,16 @@ export const SUPPLEMENT_THRESHOLD_PX = 100;
 /** An era at or below this width is drawn as a bare stripe with no text at all. */
 export const SLIVER_THRESHOLD_PX = 30;
 
+/**
+ * An era narrower than this has no room for a thumbnail beside its label.
+ *
+ * The same 100px boundary as the callout rule, and the rule v1 used
+ * (`docs/original-version-spec.md:207`). It belongs here rather than in the components
+ * because rendered width is zoom-dependent: an episode crosses the threshold as the window
+ * narrows, and this module is the only thing that knows how wide the box came out.
+ */
+export const THUMBNAIL_MIN_WIDTH_PX = 100;
+
 /** Number of category colours defined in the stylesheet. */
 export const PALETTE_SIZE = 7;
 
@@ -34,6 +44,20 @@ interface Scale {
   pxPerDay: number;
   /** Day-span equivalent of `CALLOUT_WIDTH_PX`, at least 1. */
   calloutDays: number;
+  /** Image names known to exist; empty when the caller did not say. */
+  availableImageNames: ReadonlySet<string>;
+}
+
+/**
+ * The thumbnail an item should draw, or null.
+ *
+ * Availability is checked here rather than at render time so a name that points at nothing
+ * is indistinguishable from no name at all by the time anything is drawn.
+ */
+function thumbnailFor(episode: LayoutEpisode, width: number, scale: Scale): string | null {
+  if (!episode.imageName) return null;
+  if (!scale.availableImageNames.has(episode.imageName)) return null;
+  return width >= THUMBNAIL_MIN_WIDTH_PX ? episode.imageName : null;
 }
 
 const emptyLayout = (
@@ -132,7 +156,8 @@ function buildEraItem(episode: LayoutEpisode, scale: Scale): TimeItem {
     onCeiling: false,
     supplementOf: null,
     targetRailIndex: null,
-    reference: false
+    reference: false,
+    imageName: thumbnailFor(episode, width, scale)
   };
 }
 
@@ -188,7 +213,12 @@ function buildIncidentItem(
     onCeiling,
     supplementOf,
     targetRailIndex,
-    reference: false
+    reference: false,
+    // Measured against the callout's nominal width rather than the width computed above:
+    // calloutDays is a rounded day-count, so the box lands a fraction either side of 100px
+    // and an image would otherwise blink in and out with the rounding. A supplement gets one
+    // too — it is where the narrow era's label went, so it is where the picture belongs.
+    imageName: thumbnailFor(episode, CALLOUT_WIDTH_PX, scale)
   };
 }
 
@@ -211,7 +241,9 @@ function buildReferenceItem(category: LayoutCategory, scale: Scale): TimeItem {
     onCeiling: false,
     supplementOf: null,
     targetRailIndex: null,
-    reference: true
+    reference: true,
+    // A reference bar stands in for a category with no eras; there is no episode behind it.
+    imageName: null
   };
 }
 
@@ -239,7 +271,8 @@ function placeholder(
     onCeiling: false,
     supplementOf: null,
     targetRailIndex: null,
-    reference: false
+    reference: false,
+    imageName: null
   };
 }
 
@@ -379,7 +412,8 @@ export function buildLayout(input: LayoutInput): TimelineLayout {
     floor,
     ceiling,
     pxPerDay,
-    calloutDays: Math.max(1, Math.round(CALLOUT_WIDTH_PX / pxPerDay))
+    calloutDays: Math.max(1, Math.round(CALLOUT_WIDTH_PX / pxPerDay)),
+    availableImageNames: input.availableImageNames ?? new Set<string>()
   };
 
   const byCategory = new Map<string, LayoutEpisode[]>();

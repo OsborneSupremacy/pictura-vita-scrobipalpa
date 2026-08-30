@@ -16,6 +16,16 @@ public record Episode
 
     public required string UrlDescription { get; init; }
 
+    /// <summary>
+    /// File name of the episode's image, for example "kalamazoo-house.jpg". Empty for none.
+    ///
+    /// Only the name is stored; the bytes live on disk under the image root (see
+    /// docs/image-support.md), which keeps the store portable and out of the business of
+    /// carrying binary data. A name that resolves to no file is not an error — it draws as
+    /// no image, exactly like an episode that never had one.
+    /// </summary>
+    public required string ImageName { get; init; }
+
     public required EpisodeType EpisodeType { get; init; }
 
     public required DatePrecision StartPrecision { get; init; }

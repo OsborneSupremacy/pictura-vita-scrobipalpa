@@ -56,6 +56,22 @@ if (problems.Count > 0)
     AnsiConsole.MarkupLine("[yellow]Skipping {0} invalid row(s).[/]", skipped);
 }
 
+var imageWarnings = ValidationService.ImageWarnings(occurrences);
+
+if (imageWarnings.Count > 0)
+{
+    var table = new Table().Border(TableBorder.Rounded);
+    table.AddColumn("Row");
+    table.AddColumn("Image warning");
+    foreach (var warning in imageWarnings)
+        table.AddRow(warning.RowNumber.ToString(), Markup.Escape(warning.Problem));
+
+    AnsiConsole.Write(table);
+    AnsiConsole.MarkupLine(
+        "[yellow]{0} image name(s) will be imported as no image.[/] The rows themselves are fine.",
+        imageWarnings.Count);
+}
+
 var timeline = TransformerService.Transform(
     occurrences,
     sourceFile,

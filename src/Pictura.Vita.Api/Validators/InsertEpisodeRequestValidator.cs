@@ -1,3 +1,5 @@
+using Pictura.Vita.Utility;
+
 namespace Pictura.Vita.Api.Validators;
 
 internal class InsertEpisodeRequestValidator : AbstractValidator<InsertEpisodeRequest>
@@ -11,6 +13,15 @@ internal class InsertEpisodeRequestValidator : AbstractValidator<InsertEpisodeRe
         RuleFor(x => x.Description).NotNull();
         RuleFor(x => x.Url).NotNull();
         RuleFor(x => x.UrlDescription).NotNull();
+        // Empty means "no image"; anything else has to be a bare, servable file name. Rejecting
+        // it here keeps a name that could never resolve — or could escape the image root — from
+        // reaching the store in the first place.
+        RuleFor(x => x.ImageName)
+            .NotNull()
+            .Must(name => string.IsNullOrEmpty(name) || ImageFileName.IsValid(name))
+            .WithMessage(
+                "ImageName must be a bare file name ending in "
+                + ".jpg, .jpeg, .png, .webp or .gif, or be empty for no image.");
         RuleFor(x => x.StartPrecision).NotNull();
         RuleFor(x => x.Start).NotNull();
         RuleFor(x => x.EndPrecision).NotNull();

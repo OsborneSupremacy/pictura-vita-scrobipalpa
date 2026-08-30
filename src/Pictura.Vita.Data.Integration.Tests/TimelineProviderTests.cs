@@ -357,6 +357,92 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             .Be("Edited on disk");
     }
 
+    /// <summary>
+    /// UpdateEpisodeAsync copies the episode field by field, so a field added to the domain
+    /// model and not to that list is silently dropped on every save — which is exactly what
+    /// happened to ImageName the first time round: the request answered 204 and the name
+    /// never reached the file.
+    /// </summary>
+    [Fact]
+    public async Task UpdateEpisodeAsync_KeepsTheImageName()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with { ImageName = "kalamazoo-house.jpg" }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .ImageName.Should()
+            .Be("kalamazoo-house.jpg");
+    }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_CanClearTheImageName()
+    {
+        // arrange — an episode that already has an image, so the empty string has to survive
+        // the round trip rather than being read as "unchanged".
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with { ImageName = "before.jpg" }
+        });
+
+        var withImage = (await sut.GetEpisodeAsync(episode.EpisodeId)).Value;
+
+        // act
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = withImage with { ImageName = string.Empty }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .ImageName.Should()
+            .BeEmpty();
+    }
+
+    [Fact]
+    public async Task InsertEpisodeAsync_KeepsTheImageName()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var inserted = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+            .Build<InsertEpisodeRequest>()
+            .With(x => x.TimelineId, timeline.TimelineId)
+            .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
+            .With(x => x.Indefinite, false)
+            .With(x => x.ImageName, "first-day-at-acme.png")
+            .Create())).Value;
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == inserted.EpisodeId)
+            .ImageName.Should()
+            .Be("first-day-at-acme.png");
+    }
+
     [Fact]
     public async Task DeleteEpisodeAsync_RemovesTheEpisodeAndWritesThroughToTheFile()
     {

@@ -1,4 +1,5 @@
 using dotenv.net;
+using Pictura.Vita.Api.Images;
 using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
 using Pictura.Vita.Api.Validators;
@@ -46,6 +47,11 @@ if (!File.Exists(dataFilePath))
     throw new InvalidOperationException(
         $"DATA_FILE_PATH points at \"{dataFilePath}\", which does not exist. Check the path in "
         + "the API project's .env file, or run the Excel importer to generate it.");
+
+// Images are optional, so unlike the data file a missing root is not fatal — but it is
+// logged, because "no images anywhere" and "IMAGE_ROOT_PATH is mistyped" otherwise look
+// exactly the same from the outside.
+var imageStore = ImageStore.Create(dataFilePath);
 
 var dataStore = new DataStore(dataFilePath);
 var timelineProvider = new TimelineProvider(dataStore);
@@ -113,6 +119,46 @@ app.MapPut("/timeline", async (
     .WithDisplayName("Update a timeline's information")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+// image endpoints
+//
+// Images are served through the API rather than from a static file directory so the sandbox
+// is enforced in one place. This is not paranoia about a local app: the API is an HTTP server
+// on loopback that any page open in the browser can reach, and the file name it is asked for
+// came out of a data file.
+
+app.MapGet("/timeline/{id:guid}/images", ([FromRoute]Guid id) =>
+        Results.Ok(imageStore.List(id)))
+    .WithDisplayName("Get the image file names present for a timeline")
+    .Produces<IEnumerable<string>>();
+
+app.MapGet("/timeline/{id:guid}/image/{name}", (
+        [FromRoute]Guid id,
+        [FromRoute]string name,
+        [FromQuery]string? size) =>
+    {
+        var wantsThumbnail = string.Equals(size, "thumb", StringComparison.OrdinalIgnoreCase);
+
+        var file = wantsThumbnail
+            ? imageStore.Thumbnail(id, name, app.Logger)
+            : imageStore.Find(id, name);
+
+        // Every way this can fail — no root, an unsafe name, a name escaping the root, a
+        // missing file, bytes that will not decode — answers the same 404, so probing says
+        // nothing about what exists outside the sandbox.
+        if (file is null) return Results.NotFound();
+
+        // Passing lastModified is what makes this a conditional request: without it the
+        // browser re-downloads every visible thumbnail on each re-render.
+        return Results.File(
+            file.FullName,
+            contentType: ImageStore.ContentType(file.Name),
+            lastModified: file.LastWriteTimeUtc,
+            enableRangeProcessing: true);
+    })
+    .WithDisplayName("Get an episode image, full size or as a thumbnail")
+    .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound);
 
 // category endpoints
@@ -258,6 +304,10 @@ app.MapDelete("/episode/{id:guid}", async ([FromRoute]Guid id) =>
     .WithDisplayName("Delete an episode")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
+
+app.Logger.LogInformation(
+    "Image root: {Root}",
+    imageStore.Root ?? "(none found — episodes will draw without images)");
 
 app.Run();
 

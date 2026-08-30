@@ -122,6 +122,9 @@ public class RandomTimelineProvider
             .RuleFor(e => e.Description, f => f.Lorem.Paragraph(2))
             .RuleFor(e => e.Url, f => f.Internet.Url())
             .RuleFor(e => e.UrlDescription, f => f.Lorem.Sentence(4))
+            // Empty rather than a faked name: a generated timeline has no image directory, so
+            // a name here would only ever resolve to nothing.
+            .RuleFor(e => e.ImageName, string.Empty)
             .RuleFor(e => e.EpisodeType, EpisodeType.Incident)
             .RuleFor(e => e.StartPrecision, DatePrecision.Day)
             .RuleFor(e => e.EndPrecision, DatePrecision.Day)

@@ -79,11 +79,33 @@ async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unkn
   throw new Error(`${method} ${path} failed: ${response.status} ${response.statusText}`);
 }
 
+/**
+ * URL of an episode's image.
+ *
+ * `thumb` is generated and cached by the API; `full` is the original file untouched. A name
+ * that resolves to nothing answers 404, but callers should already know what exists from
+ * `timelineImages` rather than relying on that.
+ */
+export function imageUrl(timelineId: string, name: string, size: 'thumb' | 'full'): string {
+  return (
+    `${baseUrl}/timeline/${timelineId}/image/${encodeURIComponent(name)}` +
+    (size === 'thumb' ? '?size=thumb' : '')
+  );
+}
+
 export const api = {
   timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
   timelines: () => get<ApiTimeline[]>('/timelines'),
   timeline: (id: string) => get<ApiTimeline>(`/timeline/${id}`),
   randomTimeline: () => get<ApiTimeline>('/timeline/random'),
+  /**
+   * The image file names actually present on disk for a timeline.
+   *
+   * Fetched alongside the timeline so the renderer knows what exists before it lays anything
+   * out: discovering a missing image from a 404 mid-render means a flash of broken image and
+   * a box that collapses afterwards.
+   */
+  timelineImages: (id: string) => get<string[]>(`/timeline/${id}/images`),
   updateTimelineInfo: (request: UpdateTimelineInfoRequest) => send('PUT', '/timeline', request),
 
   insertCategory: (request: InsertCategoryRequest) => send('POST', '/category', request),

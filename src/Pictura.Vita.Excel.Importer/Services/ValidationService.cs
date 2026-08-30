@@ -1,4 +1,5 @@
 using Pictura.Vita.Excel.Importer.Models;
+using Pictura.Vita.Utility;
 
 namespace Pictura.Vita.Excel.Importer.Services;
 
@@ -49,4 +50,21 @@ internal static class ValidationService
 
     public static bool IsValid(Occurrence occurrence, IReadOnlyList<RowProblem> problems) =>
         problems.All(problem => problem.RowNumber != occurrence.RowNumber);
+
+    /// <summary>
+    /// Rows whose image name cannot be served. These are warnings rather than problems: the
+    /// episode imports without its image, because blocking the whole import — or, with
+    /// --skip-invalid, silently dropping the row — over a photo file name is out of all
+    /// proportion to the mistake.
+    /// </summary>
+    public static IReadOnlyList<RowProblem> ImageWarnings(IReadOnlyList<Occurrence> occurrences) =>
+        occurrences
+            .Where(occurrence => !string.IsNullOrWhiteSpace(occurrence.ImageName)
+                                 && !ImageFileName.IsValid(occurrence.ImageName))
+            .Select(occurrence => new RowProblem(
+                occurrence.RowNumber,
+                $"Image name '{occurrence.ImageName}' is not a bare file name ending in "
+                + string.Join(", ", ImageFileName.AllowedExtensions)
+                + ". The episode will import without an image."))
+            .ToList();
 }

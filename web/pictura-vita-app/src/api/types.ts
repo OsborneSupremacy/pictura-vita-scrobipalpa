@@ -37,6 +37,14 @@ export interface ApiEpisode {
   description: string;
   url: string;
   urlDescription: string;
+  /**
+   * File name of the episode's image; empty for none. Null in files written before images
+   * existed, as with `icon` and `color` on a category.
+   *
+   * Only the name is stored. Whether a file of that name actually exists is a separate
+   * question, answered by `GET /timeline/{id}/images`.
+   */
+  imageName: string;
   episodeType: number;
   startPrecision: number;
   /** yyyy-MM-dd */
@@ -119,6 +127,7 @@ export interface InsertEpisodeRequest {
   description: string;
   url: string;
   urlDescription: string;
+  imageName: string;
   startPrecision: number;
   start: string;
   endPrecision: number;

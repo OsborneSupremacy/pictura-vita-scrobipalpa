@@ -14,6 +14,12 @@ export type EpisodeDialogMode =
 interface Props {
   timeline: ApiTimeline;
   mode: EpisodeDialogMode;
+  /**
+   * Image file names present on disk. Offered as suggestions and used to warn about a name
+   * that matches nothing — a warning rather than an error, since the file may be dropped in
+   * afterwards and the episode is still worth saving either way.
+   */
+  availableImages: readonly string[];
   today: DayNumber;
   /** Fired after the episode is saved or deleted, so the owner can refetch. */
   onChanged: () => void;
@@ -26,6 +32,7 @@ interface Draft {
   description: string;
   url: string;
   urlDescription: string;
+  imageName: string;
   start: string;
   end: string;
   indefinite: boolean;
@@ -50,6 +57,8 @@ const fromEpisode = (episode: ApiEpisode): Draft => ({
   description: episode.description,
   url: episode.url,
   urlDescription: episode.urlDescription,
+  // Null in episodes written before images existed.
+  imageName: episode.imageName ?? '',
   start: episode.start,
   end: episode.end === MAX_DATE_ISO ? '' : episode.end,
   indefinite: episode.indefinite || episode.end === MAX_DATE_ISO,
@@ -64,6 +73,7 @@ const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
   description: '',
   url: '',
   urlDescription: '',
+  imageName: '',
   start: toIso(today),
   end: toIso(today),
   indefinite: false,
@@ -74,6 +84,29 @@ const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
 const toDraft = (mode: EpisodeDialogMode, today: DayNumber): Draft =>
   mode.kind === 'edit' ? fromEpisode(mode.episode) : blankDraft(mode.categoryIds, today);
 
+/**
+ * What to say under the image field.
+ *
+ * None of these block saving. A name that matches no file draws as no image, which is the
+ * same outcome as leaving the field blank — refusing the save would be a strange way to
+ * react to a photo that has not been copied across yet.
+ */
+function describeImageName(
+  name: string,
+  available: readonly string[]
+): { text: string; bad: boolean } {
+  const trimmed = name.trim();
+
+  if (!trimmed) return { text: 'File name only, from your timeline\u2019s images folder.', bad: false };
+
+  if (available.includes(trimmed)) return { text: 'Found.', bad: false };
+
+  return {
+    text: 'No file of that name is in the images folder yet \u2014 the episode will draw without one.',
+    bad: true
+  };
+}
+
 function problemWith(draft: Draft): string | null {
   if (!draft.title.trim()) return 'Give the episode a title.';
   if (!draft.start) return 'Give a start date.';
@@ -83,7 +116,14 @@ function problemWith(draft: Draft): string | null {
   return null;
 }
 
-export function EpisodeDialog({ timeline, mode, today, onChanged, onClose }: Props) {
+export function EpisodeDialog({
+  timeline,
+  mode,
+  today,
+  availableImages,
+  onChanged,
+  onClose
+}: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Draft>(() => toDraft(mode, today));
   const [saving, setSaving] = useState(false);
@@ -124,6 +164,7 @@ export function EpisodeDialog({ timeline, mode, today, onChanged, onClose }: Pro
       description: draft.description,
       url: draft.url,
       urlDescription: draft.urlDescription,
+      imageName: draft.imageName.trim(),
       start: draft.start,
       end: draft.indefinite ? MAX_DATE_ISO : draft.end,
       indefinite: draft.indefinite,
@@ -170,6 +211,8 @@ export function EpisodeDialog({ timeline, mode, today, onChanged, onClose }: Pro
   };
 
   const sortedCategories = [...timeline.categories].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const imageHint = describeImageName(draft.imageName, availableImages);
 
   return (
     <dialog ref={dialog} className="info-dialog episode-dialog" onClose={onClose} onCancel={onClose}>
@@ -254,6 +297,22 @@ export function EpisodeDialog({ timeline, mode, today, onChanged, onClose }: Pro
               value={draft.urlDescription}
               onChange={e => set('urlDescription', e.target.value)}
             />
+          </label>
+
+          <label>
+            Image
+            <input
+              value={draft.imageName}
+              list="episode-image-names"
+              placeholder="kalamazoo-house.jpg"
+              onChange={e => set('imageName', e.target.value)}
+            />
+            <datalist id="episode-image-names">
+              {availableImages.map(name => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+            <small className={imageHint.bad ? 'bad' : 'muted'}>{imageHint.text}</small>
           </label>
         </div>
 

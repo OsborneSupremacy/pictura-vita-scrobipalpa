@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { EpisodeType, type ApiEpisode } from '../api/types';
+import { imageUrl } from '../api/client';
 import { toIso, toDayNumber, daySpan, type DayNumber, type TimeItem } from '../layout';
 import { describeGap, gapLabel } from './elapsed';
 
@@ -18,6 +19,13 @@ interface Props {
   containerWidth: number;
   /** Passed in rather than read from the clock, so the panel renders deterministically. */
   today: DayNumber;
+  timelineId: string;
+  /**
+   * Image to show, already checked against what exists on disk. Null draws nothing at all —
+   * no placeholder, no broken-image glyph — so an episode whose picture is missing looks
+   * exactly like an episode that never had one.
+   */
+  imageName: string | null;
   onClose: () => void;
   onZoom: (start: number, end: number) => void;
   onEdit: (episode: ApiEpisode) => void;
@@ -41,11 +49,14 @@ export function DetailPanel({
   anchor,
   containerWidth,
   today,
+  timelineId,
+  imageName,
   onClose,
   onZoom,
   onEdit
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  const [showingFullSize, setShowingFullSize] = useState(false);
 
   // Hidden for the first paint so the panel is never seen at its pre-measurement position.
   const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
@@ -70,11 +81,15 @@ export function DetailPanel({
       left: `${left}px`,
       top: `${fitsAbove ? above : anchor.y + anchor.height + GAP}px`
     });
-  }, [anchor, containerWidth, episode]);
+  }, [anchor, containerWidth, episode, imageName]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+      // Escape closes the full-size view first, then the panel: closing both at once would
+      // dismiss the thing the reader was looking at *and* the thing they got to it from.
+      if (showingFullSize) setShowingFullSize(false);
+      else onClose();
     };
 
     const onPointerDown = (event: PointerEvent) => {
@@ -91,7 +106,7 @@ export function DetailPanel({
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [onClose]);
+  }, [onClose, showingFullSize]);
 
   const body = () => {
     if (!episode) {
@@ -110,6 +125,27 @@ export function DetailPanel({
     return (
       <>
         {episode.subtitle && <p className="subtitle">{episode.subtitle}</p>}
+
+        {imageName && (
+          <button
+            type="button"
+            className="detail-thumb"
+            onClick={() => setShowingFullSize(true)}
+            title="Show full size"
+          >
+            <img
+              src={imageUrl(timelineId, imageName, 'thumb')}
+              alt={episode.title}
+              decoding="async"
+              // The file can still go missing between the listing and this render. Hiding the
+              // whole button leaves the panel looking like one with no picture, rather than
+              // an empty frame around a broken image.
+              onError={event => {
+                event.currentTarget.closest('button')?.style.setProperty('display', 'none');
+              }}
+            />
+          </button>
+        )}
 
         <dl>
           <dt>Dates</dt>
@@ -182,12 +218,30 @@ export function DetailPanel({
   };
 
   return (
-    <aside ref={panel} className={`detail detail-${placement}`} style={style}>
-      <header>
-        <h3>{episode?.title ?? item.title}</h3>
-        <button type="button" onClick={onClose} aria-label="Close">×</button>
-      </header>
-      {body()}
-    </aside>
+    <>
+      <aside ref={panel} className={`detail detail-${placement}`} style={style}>
+        <header>
+          <h3>{episode?.title ?? item.title}</h3>
+          <button type="button" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        {body()}
+      </aside>
+
+      {/* The original file, not the cached thumbnail. Rendered as a sibling of the panel so
+          it is not clipped by it, and dismissed by clicking anywhere — the picture is the
+          only thing on screen, so there is nothing else a click could mean. */}
+      {showingFullSize && imageName && (
+        <div
+          className="lightbox"
+          role="presentation"
+          onPointerDown={event => {
+            event.stopPropagation();
+            setShowingFullSize(false);
+          }}
+        >
+          <img src={imageUrl(timelineId, imageName, 'full')} alt={episode?.title ?? item.title} />
+        </div>
+      )}
+    </>
   );
 }

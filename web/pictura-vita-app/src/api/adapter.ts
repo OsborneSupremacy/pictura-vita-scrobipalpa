@@ -23,6 +23,8 @@ export function toLayoutEpisode(episode: ApiEpisode): LayoutEpisode {
     description: episode.description,
     url: episode.url,
     urlDescription: episode.urlDescription,
+    // Null in data written before images existed; absent means "no image".
+    imageName: episode.imageName ?? '',
     kind: episode.episodeType === EpisodeType.Era ? 'era' : 'incident',
     start,
     // An indefinite episode carries 9999-12-31; the layout substitutes the window's

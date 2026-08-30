@@ -13,6 +13,7 @@ internal static class SourceReaderService
     private const int StartDate = 6;
     private const int EndDate = 7;
     private const int Group = 8;
+    private const int ImageName = 9;
 
     public static IReadOnlyList<Occurrence> ReadAll(string sourcePath)
     {
@@ -36,7 +37,8 @@ internal static class SourceReaderService
                 StartDate = ReadDate(row.Cell(StartDate)) ?? DateOnly.MinValue,
                 // A blank end date means the occurrence is still going.
                 EndDate = ReadDate(row.Cell(EndDate)) ?? DateOnly.MaxValue,
-                Group = row.Cell(Group).GetString().Trim()
+                Group = row.Cell(Group).GetString().Trim(),
+                ImageName = row.Cell(ImageName).GetString().Trim()
             })
             .OrderBy(occurrence => occurrence.StartDate)
             .ThenBy(occurrence => occurrence.Group)

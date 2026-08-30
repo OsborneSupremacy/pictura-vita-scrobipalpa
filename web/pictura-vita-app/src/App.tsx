@@ -16,16 +16,35 @@ const today = toDayNumber(new Date().toISOString().slice(0, 10));
 export default function App() {
   const [summaries, setSummaries] = useState<ApiTimelineSummary[]>([]);
   const [timeline, setTimeline] = useState<ApiTimeline | null>(null);
+  const [availableImages, setAvailableImages] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
   const [editingCategories, setEditingCategories] = useState(false);
+
+  /**
+   * Loads a timeline and the image names that exist for it.
+   *
+   * The two are fetched together so the first render already knows which images are real.
+   * A failure to list images is swallowed on purpose: images are an optional extra, and
+   * losing the whole timeline because an image directory could not be read would be a poor
+   * trade.
+   */
+  const load = async (id: string) => {
+    const [loaded, images] = await Promise.all([
+      api.timeline(id),
+      api.timelineImages(id).catch(() => [] as string[])
+    ]);
+
+    setTimeline(loaded);
+    setAvailableImages(images);
+  };
 
   useEffect(() => {
     api
       .timelineSummaries()
       .then(async found => {
         setSummaries(found);
-        if (found[0]) setTimeline(await api.timeline(found[0].timelineId));
+        if (found[0]) await load(found[0].timelineId);
       })
       .catch((problem: unknown) => setError(problem instanceof Error ? problem.message : String(problem)));
   }, []);
@@ -33,7 +52,7 @@ export default function App() {
   const select = async (id: string) => {
     setError(null);
     try {
-      setTimeline(await api.timeline(id));
+      await load(id);
     } catch (problem: unknown) {
       setError(problem instanceof Error ? problem.message : String(problem));
     }
@@ -109,6 +128,7 @@ export default function App() {
           <TimelineView
             timeline={timeline}
             today={today}
+            availableImages={availableImages}
             onChanged={() => void select(timeline.timelineId)}
           />
         </>
