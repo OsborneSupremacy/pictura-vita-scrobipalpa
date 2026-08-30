@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toDayNumber } from '../layout';
-import { describeGap, gapLabel } from './elapsed';
+import { describeAge, describeGap, gapLabel } from './elapsed';
 
 const day = toDayNumber;
 const today = day('2026-08-29');
@@ -54,5 +54,41 @@ describe('gapLabel', () => {
 
   it('treats the same day as not yet future', () => {
     expect(gapLabel('start', today, today)).toBe('Time since start');
+  });
+});
+
+describe('describeAge', () => {
+  const living = { birth: day('1982-04-17'), death: null };
+  const died = { birth: day('1982-04-17'), death: day('2020-09-30') };
+
+  it('reads as an age in the same units as a gap', () => {
+    expect(describeAge(living, day('2026-04-17'))).toBe('44 years');
+    expect(describeAge(living, day('1995-12-01'))).toBe('13 years, 7 months');
+  });
+
+  it('keeps infancy in months and days rather than rounding to nothing', () => {
+    expect(describeAge(living, day('1982-07-01'))).toBe('2 months, 14 days');
+    expect(describeAge(living, day('1982-04-18'))).toBe('1 day');
+  });
+
+  it('gives the day of birth an age of zero, not "today"', () => {
+    expect(describeAge(living, living.birth)).toBe('0 days');
+  });
+
+  it('has nothing to say about a day before the birth', () => {
+    expect(describeAge(living, day('1975-06-01'))).toBeNull();
+  });
+
+  it('has nothing to say about a day after the death', () => {
+    expect(describeAge(died, day('2020-10-01'))).toBeNull();
+    expect(describeAge(died, day('2024-01-01'))).toBeNull();
+  });
+
+  it('still gives an age on the day of death itself', () => {
+    expect(describeAge(died, died.death)).toBe('38 years, 5 months');
+  });
+
+  it('does not bound a living subject at the far end', () => {
+    expect(describeAge(living, day('2060-04-17'))).toBe('78 years');
   });
 });

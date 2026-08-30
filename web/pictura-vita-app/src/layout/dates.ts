@@ -23,6 +23,9 @@ export interface CivilDate {
 /** The `DateOnly.MaxValue` the API uses to mean "no known end". */
 export const MAX_DATE_ISO = '9999-12-31';
 
+/** The `DateOnly.MinValue` the API uses to mean "no date given", as an unknown birth is. */
+export const MIN_DATE_ISO = '0001-01-01';
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export function fromCivil({ year, month, day }: CivilDate): DayNumber {

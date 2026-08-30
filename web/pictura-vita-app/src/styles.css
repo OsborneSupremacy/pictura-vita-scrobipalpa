@@ -813,9 +813,10 @@ main { padding: 16px 20px 40px; }
   min-width: 0;
 }
 
-/* Square, and cropped to fill it. Sizing by height alone left a portrait photo 12px wide in
-   a callout — technically an image, but nothing anyone could recognise; a square gives both
-   orientations the same legible area and keeps a row of bars looking even.
+/* A square box, with the picture letterboxed inside it rather than cropped to fill it.
+   Cropping cost too much: a logo or a group photo lost the part that identified it, and on a
+   bar you are looking at in passing that is the whole of what the thumbnail is for. The box
+   stays square so rails stay even and a portrait photo is not reduced to a 12px slice.
    The size is stated in pixels rather than as `height: 100%; aspect-ratio: 1`, which
    collapses to zero width: a percentage height is indefinite while a flex item is being
    measured, so there is nothing for the ratio to derive a width from. Subtracted here are
@@ -827,9 +828,11 @@ main { padding: 16px 20px 40px; }
   flex: 0 0 auto;
   width: var(--thumb-size);
   height: var(--thumb-size);
-  object-fit: cover;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.15);
+  object-fit: contain;
+  /* Transparent, so the letterboxing reads as the bar showing through rather than as a frame
+     drawn around the picture. No border-radius either: it would only clip the corners of a
+     picture that no longer reaches them. */
+  background: transparent;
 }
 
 .labels {
@@ -969,10 +972,14 @@ main { padding: 16px 20px 40px; }
   line-height: 0;
 }
 
+/* The panel has room to let the picture keep its own shape, so it is neither cropped nor
+   letterboxed — the box is sized by the image instead of the other way round. */
 .detail-thumb img {
-  width: 100%;
-  max-height: 180px;
-  object-fit: cover;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 220px;
+  margin: 0 auto;
   border-radius: 6px;
   border: 1px solid var(--line);
 }

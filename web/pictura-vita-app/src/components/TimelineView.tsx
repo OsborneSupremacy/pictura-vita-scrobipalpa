@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ApiTimeline } from '../api/types';
+import { SubjectType, type ApiTimeline } from '../api/types';
 import { toLayoutCategory, toLayoutEpisode } from '../api/adapter';
 import {
   buildLayout,
   Confidentiality,
   MAX_DATE_ISO,
+  MIN_DATE_ISO,
   toDayNumber,
   toIso,
   type DayNumber,
@@ -15,6 +16,7 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
 import { Band } from './Band';
 import { DetailPanel, type Anchor } from './DetailPanel';
+import type { Lifespan } from './elapsed';
 import { EpisodeDialog, type EpisodeDialogMode } from './EpisodeDialog';
 import { FilterControls } from './FilterControls';
 
@@ -82,6 +84,19 @@ export function TimelineView({ timeline, today, availableImages, onChanged }: Pr
       ceiling: ongoing || end === MAX_DATE_ISO ? today : toDayNumber(end)
     };
   }, [zoom, timeline, today]);
+
+  // Only a person has an age, and only one with a birth date on file: the API writes
+  // DateOnly.MinValue where none was given, which would otherwise date every episode from
+  // the year 1. The death bounds the other end, so nothing posthumous is given an age.
+  const life = useMemo<Lifespan | null>(() => {
+    const { subjectType, person } = timeline.timelineInfo.timelineSubject;
+    if (subjectType !== SubjectType.Person) return null;
+    if (!person?.birth || person.birth === MIN_DATE_ISO) return null;
+
+    // As elsewhere, the sentinel is authoritative for files written before `living` existed.
+    const living = person.living || !person.death || person.death === MAX_DATE_ISO;
+    return { birth: toDayNumber(person.birth), death: living ? null : toDayNumber(person.death) };
+  }, [timeline]);
 
   const visibleCategoryIds = useMemo(
     () =>
@@ -211,6 +226,7 @@ export function TimelineView({ timeline, today, availableImages, onChanged }: Pr
           anchor={selected.anchor}
           containerWidth={width}
           today={today}
+          life={life}
           timelineId={timeline.timelineId}
           // Resolved here rather than in the panel so a name pointing at nothing is
           // indistinguishable from no name by the time anything renders.

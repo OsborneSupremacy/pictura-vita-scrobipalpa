@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { EpisodeType, type ApiEpisode } from '../api/types';
 import { imageUrl } from '../api/client';
 import { toIso, toDayNumber, daySpan, type DayNumber, type TimeItem } from '../layout';
-import { describeGap, gapLabel } from './elapsed';
+import { describeAge, describeGap, gapLabel, type Lifespan } from './elapsed';
 
 /** Position and size of the clicked item, relative to the timeline container. */
 export interface Anchor {
@@ -19,6 +19,11 @@ interface Props {
   containerWidth: number;
   /** Passed in rather than read from the clock, so the panel renders deterministically. */
   today: DayNumber;
+  /**
+   * The subject's lifespan, when the timeline is about a person and a birth date is on
+   * file. Null means the panel simply says nothing about age.
+   */
+  life: Lifespan | null;
   timelineId: string;
   /**
    * Image to show, already checked against what exists on disk. Null draws nothing at all —
@@ -49,6 +54,7 @@ export function DetailPanel({
   anchor,
   containerWidth,
   today,
+  life,
   timelineId,
   imageName,
   onClose,
@@ -122,6 +128,11 @@ export function DetailPanel({
     const duration = daySpan(start, end);
     const isIncident = episode.episodeType !== EpisodeType.Era;
 
+    // Null for a timeline with no birth date to measure from, and for a date outside the
+    // subject's life — an episode can fall either side of it without being any less theirs.
+    const ageAtStart = life === null ? null : describeAge(life, start);
+    const ageAtEnd = life === null ? null : describeAge(life, end);
+
     return (
       <>
         {episode.subtitle && <p className="subtitle">{episode.subtitle}</p>}
@@ -160,11 +171,33 @@ export function DetailPanel({
               say nothing; it gets one unqualified gap instead. */}
           {isIncident ? (
             <>
+              {ageAtStart && (
+                <>
+                  <dt>Age</dt>
+                  <dd>{ageAtStart}</dd>
+                </>
+              )}
+
               <dt>{gapLabel('', start, today).trim()}</dt>
               <dd>{describeGap(start, today)}</dd>
             </>
           ) : (
             <>
+              {ageAtStart && (
+                <>
+                  <dt>Age at start</dt>
+                  <dd>{ageAtStart}</dd>
+                </>
+              )}
+
+              {/* An indefinite era has no end to be an age at, just as it has no gap. */}
+              {!episode.indefinite && ageAtEnd && (
+                <>
+                  <dt>Age at end</dt>
+                  <dd>{ageAtEnd}</dd>
+                </>
+              )}
+
               <dt>{gapLabel('start', start, today)}</dt>
               <dd>{describeGap(start, today)}</dd>
 
