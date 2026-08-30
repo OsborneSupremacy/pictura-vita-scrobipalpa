@@ -225,7 +225,7 @@ main { padding: 16px 20px 40px; }
 
 .category-row {
   display: grid;
-  grid-template-columns: auto 1fr 120px auto;
+  grid-template-columns: auto auto 1fr 120px auto;
   gap: 8px;
   align-items: center;
 }
@@ -357,6 +357,87 @@ main { padding: 16px 20px 40px; }
   color: #b91c1c;
   border-color: var(--line);
   background: var(--surface);
+}
+
+/* ---- Icons ---- */
+
+.band-icon {
+  vertical-align: -2px;
+  margin-right: 7px;
+  opacity: 0.75;
+}
+
+.icon-picker { position: relative; }
+
+.icon-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.icon-trigger:disabled { opacity: 0.4; cursor: default; }
+.icon-empty { color: var(--muted); }
+
+.icon-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 268px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.icon-panel input {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.icon-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.icon-grid button:hover { background: var(--page); }
+
+.icon-panel .muted { margin: 6px 2px 0; font-size: 11px; }
+
+.icon-grid button.chosen {
+  border-color: #1d4ed8;
+  background: #eff6ff;
 }
 
 /* ---- Profile menu ---- */

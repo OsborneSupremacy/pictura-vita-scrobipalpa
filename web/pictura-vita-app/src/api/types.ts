@@ -23,6 +23,8 @@ export interface ApiCategory {
   subtitle: string;
   confidentiality: number;
   sortOrder: number;
+  /** Lucide kebab-case name; empty for none. Null in files written before icons existed. */
+  icon: string;
 }
 
 export interface ApiEpisode {
@@ -98,6 +100,7 @@ export interface InsertCategoryRequest {
   subtitle: string;
   confidentiality: number;
   sortOrder: number;
+  icon: string;
 }
 
 export interface UpdateCategoryRequest {

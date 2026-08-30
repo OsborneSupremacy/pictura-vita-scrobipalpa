@@ -351,6 +351,7 @@ function buildBand(
   return {
     categoryId: category.categoryId,
     title: category.title,
+    icon: category.icon,
     colorIndex,
     eraRails,
     // Incident rails alternate above and below the band, as the original did.

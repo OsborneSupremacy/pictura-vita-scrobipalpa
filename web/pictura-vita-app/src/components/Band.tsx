@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { CategoryBand, Rail, TimeItem } from '../layout';
+import { CategoryIcon } from '../icons/CategoryIcon';
 
 interface Props {
   band: CategoryBand;
@@ -127,6 +128,7 @@ export function Band({ band, selectedKey, onSelect, onAdd }: Props) {
       {/* Header first, then the callouts that sit above the bars: a callout rendered
           before its own heading reads as belonging to the band above it. */}
       <h2 className="band-title">
+        <CategoryIcon name={band.icon} className="band-icon" />
         {band.title}
         <button
           type="button"

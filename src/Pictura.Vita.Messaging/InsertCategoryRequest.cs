@@ -11,4 +11,6 @@ public record InsertCategoryRequest
     public required Confidentiality Confidentiality { get; init; }
 
     public required int SortOrder { get; init; }
+
+    public required string Icon { get; init; }
 }

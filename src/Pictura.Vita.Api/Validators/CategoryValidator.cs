@@ -13,5 +13,6 @@ internal class CategoryValidator : AbstractValidator<Category>
             .WithMessage("A category cannot inherit confidentiality.");
         RuleFor(x => x.SortOrder)
             .GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Icon).NotNull();
     }
 }

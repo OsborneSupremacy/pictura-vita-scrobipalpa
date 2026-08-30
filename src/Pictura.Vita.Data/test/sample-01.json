@@ -887,70 +887,80 @@
           "title": "Family",
           "subtitle": "Natus nisi fugit.",
           "confidentiality": 1,
-          "sortOrder": 2
+          "sortOrder": 2,
+          "icon": "users"
         },
         {
           "categoryId": "01979e65-0ab5-7b39-9331-a30b59bad94b",
           "title": "Friends",
           "subtitle": "Ut possimus aut.",
           "confidentiality": 0,
-          "sortOrder": 4
+          "sortOrder": 4,
+          "icon": "handshake"
         },
         {
           "categoryId": "01979e65-0ab5-7a23-96b0-ea9c7f639970",
           "title": "Work",
           "subtitle": "Possimus sed eius.",
           "confidentiality": 0,
-          "sortOrder": 9
+          "sortOrder": 9,
+          "icon": "briefcase"
         },
         {
           "categoryId": "01979e65-0ab5-7ab7-ac75-ffbe08973ade",
           "title": "Education",
           "subtitle": "Commodi ex repudiandae.",
           "confidentiality": 1,
-          "sortOrder": 1
+          "sortOrder": 1,
+          "icon": "graduation-cap"
         },
         {
           "categoryId": "01979e65-0ab5-73f7-b7ea-b2e6c6b951cf",
           "title": "Travel",
           "subtitle": "Et culpa non.",
           "confidentiality": 2,
-          "sortOrder": 8
+          "sortOrder": 8,
+          "icon": "plane"
         },
         {
           "categoryId": "01979e65-0ab5-7fa0-a6f3-b2603cc0808e",
           "title": "Hobbies",
           "subtitle": "Recusandae aspernatur consectetur.",
           "confidentiality": 3,
-          "sortOrder": 6
+          "sortOrder": 6,
+          "icon": "palette"
         },
         {
           "categoryId": "01979e65-0ab5-732f-bc56-1b115b32a1c2",
           "title": "Health",
           "subtitle": "Est et aut.",
           "confidentiality": 1,
-          "sortOrder": 5
+          "sortOrder": 5,
+          "icon": "stethoscope"
         },
         {
           "categoryId": "01979e65-0ab5-73af-aafe-593e7275a66d",
           "title": "Finance",
           "subtitle": "Ab recusandae occaecati.",
           "confidentiality": 1,
-          "sortOrder": 3
+          "sortOrder": 3,
+          "icon": "banknote"
         },
         {
           "categoryId": "01979e65-0ab5-7398-978c-e2b59c67e261",
           "title": "Achievements",
           "subtitle": "Voluptates et cum.",
           "confidentiality": 1,
-          "sortOrder": 0
+          "sortOrder": 0,
+          "icon": "trophy"
         },
         {
           "categoryId": "01979e65-0ab5-718c-b677-4800e9122753",
           "title": "Miscellaneous",
           "subtitle": "Dolores magni aut.",
           "confidentiality": 3,
-          "sortOrder": 7
+          "sortOrder": 7,
+          "icon": "tag"
         }
       ]
     }

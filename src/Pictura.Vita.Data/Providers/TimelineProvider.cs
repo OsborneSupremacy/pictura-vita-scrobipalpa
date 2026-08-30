@@ -130,7 +130,8 @@ public class TimelineProvider
             Confidentiality = request.Confidentiality,
             Title = request.Title,
             Subtitle = request.Subtitle,
-            SortOrder = request.SortOrder
+            SortOrder = request.SortOrder,
+            Icon = request.Icon
         };
 
         timeline.Value.Categories.Add(newCategory);
@@ -158,7 +159,8 @@ public class TimelineProvider
             Confidentiality = request.Category.Confidentiality,
             Title = request.Category.Title,
             Subtitle = request.Category.Subtitle,
-            SortOrder = request.Category.SortOrder
+            SortOrder = request.Category.SortOrder,
+            Icon = request.Category.Icon
         });
 
         await _collection

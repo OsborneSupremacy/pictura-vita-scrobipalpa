@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { Confidentiality, type ApiCategory, type ApiTimeline } from '../api/types';
 import { removalImpact, totalOrphaned } from './categoryImpact';
+import { IconPicker } from './IconPicker';
 
 interface Props {
   timeline: ApiTimeline;
@@ -18,6 +19,7 @@ interface Row {
   subtitle: string;
   confidentiality: number;
   sortOrder: number;
+  icon: string;
   isNew: boolean;
 }
 
@@ -29,6 +31,8 @@ const LEVELS = [
 
 const toRow = (category: ApiCategory): Row => ({
   ...category,
+  // Null in files written before icons existed.
+  icon: category.icon ?? '',
   key: category.categoryId,
   isNew: false
 });
@@ -73,6 +77,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
         confidentiality: Confidentiality.OnlyMe,
         // Superseded on save by the row's position; only a placeholder until then.
         sortOrder: current.length,
+        icon: '',
         isNew: true
       }
     ]);
@@ -130,7 +135,8 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
             title: row.title.trim(),
             subtitle: row.subtitle,
             confidentiality: row.confidentiality,
-            sortOrder
+            sortOrder,
+            icon: row.icon
           });
           continue;
         }
@@ -141,6 +147,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
           (before.title !== row.title.trim() ||
             before.subtitle !== row.subtitle ||
             before.confidentiality !== row.confidentiality ||
+            (before.icon ?? '') !== row.icon ||
             before.sortOrder !== sortOrder);
 
         if (changed) {
@@ -151,7 +158,8 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
               title: row.title.trim(),
               subtitle: row.subtitle,
               confidentiality: row.confidentiality,
-              sortOrder
+              sortOrder,
+              icon: row.icon
             }
           });
         }
@@ -209,6 +217,12 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
                       ↓
                     </button>
                   </span>
+
+                  <IconPicker
+                    value={row.icon}
+                    disabled={marked}
+                    onChange={icon => set(index, { icon })}
+                  />
 
                   <input
                     value={row.title}

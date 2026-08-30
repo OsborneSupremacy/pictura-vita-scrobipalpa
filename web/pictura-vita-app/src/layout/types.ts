@@ -48,6 +48,8 @@ export interface LayoutEpisode {
 export interface LayoutCategory {
   categoryId: string;
   title: string;
+  /** Icon name to draw beside the band heading; empty for none. */
+  icon: string;
   sortOrder: number;
   /** A category cannot inherit; it is the thing episodes inherit from. */
   confidentiality: ResolvedConfidentiality;
@@ -153,6 +155,7 @@ export interface Rail {
 export interface CategoryBand {
   categoryId: string;
   title: string;
+  icon: string;
   colorIndex: number;
   eraRails: Rail[];
   /** Incident rails drawn above the era rails, arrows pointing down. */
