@@ -27,6 +27,28 @@ The 2026 pass is where it became a real application rather than a viewer: episod
 
 ---
 
+## Owning your own stories
+
+If you have used Facebook, Instagram, LinkedIn or any of the platforms that came before them, you have probably written far more of your own history than you realise: status updates, photo captions, the long anniversary post, the account of a trip written while you were still on it. Those are stories about your life, and they live on someone else's server, in someone else's format, under terms someone else can change.
+
+Two things routinely happen to them. Either the platform goes away — MySpace lost more than a decade of uploads in a botched migration, Google+ was switched off, Vine simply stopped — or you want to leave and don't, because deleting the account means abandoning the only copy of things you wrote. The official escape hatch is not much comfort: a downloaded archive of scattered HTML and JSON blobs is technically your data and practically a shoebox in the attic.
+
+And even when the platform survives and behaves, the shape is wrong. A feed is built for the moment something was posted, not for finding it again fifteen years later, and it can never show a post against the rest of your life — the job you had at the time, the city you were living in, what else was going on that year.
+
+**Pictura Vita is somewhere to bring them home.** Each of those posts becomes an episode: a date, a title, a category, and — where the writing deserves it — a Markdown **narrative** holding the full text, with the photographs sitting beside it. On the timeline it stops being an isolated post and takes its place in a band, in proportion, among everything else that was happening.
+
+Getting them in is deliberately manual and deliberately dull. Narratives are `.md` files in a folder and images are ordinary image files, so you can pull your archive off the platform and drop things in with whatever editor or script suits you; the episode dialog lists whatever it finds on disk. There is no importer to wait for and no integration to be revoked.
+
+What you are left with is legible without this application:
+
+- One JSON file of dates, titles and categories — openable by a person in any text editor.
+- One Markdown file per narrative, in the format the whole world already reads.
+- One folder of images, as ordinary files.
+
+Nothing is proprietary and nothing is encoded, so a short script — or a language model handed a single file — can turn the lot into whatever format comes next. That is the real test of ownership: not whether an export button exists, but whether the export is worth anything on the day the thing that produced it stops running. If Pictura Vita disappeared tomorrow, you would still have a folder of your own writing, in date order, that any tool can read.
+
+---
+
 ## Why the data never leaves the machine
 
 This is the constraint the whole design is bent around, and it is not a stylistic preference.
