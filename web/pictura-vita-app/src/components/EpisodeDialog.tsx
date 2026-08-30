@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { api, imageUrl, uploadImage } from '../api/client';
-import { Confidentiality, type ApiEpisode, type ApiTimeline } from '../api/types';
+import { Confidentiality, EpisodeType, type ApiEpisode, type ApiTimeline } from '../api/types';
 import { MAX_DATE_ISO, toIso, type DayNumber } from '../layout';
 
 /**
@@ -35,6 +35,8 @@ interface Draft {
   url: string;
   urlDescription: string;
   imageName: string;
+  /** `EpisodeType.Incident` or `EpisodeType.Era`. An incident holds `end` equal to `start`. */
+  episodeType: number;
   start: string;
   end: string;
   indefinite: boolean;
@@ -61,6 +63,7 @@ const fromEpisode = (episode: ApiEpisode): Draft => ({
   urlDescription: episode.urlDescription,
   // Null in episodes written before images existed.
   imageName: episode.imageName ?? '',
+  episodeType: episode.episodeType,
   start: episode.start,
   end: episode.end === MAX_DATE_ISO ? '' : episode.end,
   indefinite: episode.indefinite || episode.end === MAX_DATE_ISO,
@@ -68,7 +71,7 @@ const fromEpisode = (episode: ApiEpisode): Draft => ({
   categoryIds: [...episode.categoryIds]
 });
 
-/** A new episode starts as a single day, today, inheriting its category's visibility. */
+/** A new episode starts as an incident, today, inheriting its category's visibility. */
 const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
   title: '',
   subtitle: '',
@@ -76,6 +79,7 @@ const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
   url: '',
   urlDescription: '',
   imageName: '',
+  episodeType: EpisodeType.Incident,
   start: toIso(today),
   end: toIso(today),
   indefinite: false,
@@ -116,10 +120,19 @@ function describeImageName(
 
 function problemWith(draft: Draft): string | null {
   if (!draft.title.trim()) return 'Give the episode a title.';
-  if (!draft.start) return 'Give a start date.';
-  if (!draft.indefinite && !draft.end) return 'Give an end date, or mark the episode as ongoing.';
-  if (!draft.indefinite && draft.end < draft.start) return 'The end date is before the start date.';
   if (draft.categoryIds.length === 0) return 'Choose at least one category.';
+
+  // An incident is one day, so its end date is not the user's to give: `start` carries it.
+  if (draft.episodeType === EpisodeType.Incident) {
+    return draft.start ? null : 'Give the date it happened.';
+  }
+
+  if (!draft.start) return 'Give a start date.';
+  if (draft.indefinite) return null;
+  if (!draft.end) return 'Give an end date, or mark the episode as ongoing.';
+  // Equal dates would make it an incident, which is the other choice above rather than a
+  // shape an era is allowed to take.
+  if (draft.end <= draft.start) return 'An era runs over at least two days — end it after it starts.';
   return null;
 }
 
@@ -208,6 +221,26 @@ export function EpisodeDialog({
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft(current => ({ ...current, [key]: value }));
 
+  const isIncident = draft.episodeType === EpisodeType.Incident;
+
+  /**
+   * An incident's end date is its start date, so switching between the two types has to
+   * move the dates as well as the flag.
+   *
+   * Coming back the other way the old end date is dropped rather than kept: it was equal to
+   * the start while the episode was an incident, and an era wants a later one.
+   */
+  const setEpisodeType = (episodeType: number) =>
+    setDraft(current =>
+      episodeType === EpisodeType.Incident
+        ? { ...current, episodeType, end: current.start, indefinite: false }
+        : { ...current, episodeType, end: current.end > current.start ? current.end : '' }
+    );
+
+  /** Keeps an incident's end date on its start date, which is the only place it can be. */
+  const setStart = (start: string) =>
+    setDraft(current => ({ ...current, start, end: isIncident ? start : current.end }));
+
   const toggleCategory = (categoryId: string) =>
     setDraft(current => ({
       ...current,
@@ -227,6 +260,11 @@ export function EpisodeDialog({
     setSaving(true);
     setError(null);
 
+    // An incident cannot be ongoing and ends the day it starts, whatever the era fields were
+    // left holding before the type was switched.
+    const indefinite = !isIncident && draft.indefinite;
+    const end = isIncident ? draft.start : indefinite ? MAX_DATE_ISO : draft.end;
+
     const fields = {
       title: draft.title.trim(),
       subtitle: draft.subtitle,
@@ -235,15 +273,16 @@ export function EpisodeDialog({
       urlDescription: draft.urlDescription,
       imageName: draft.imageName.trim(),
       start: draft.start,
-      end: draft.indefinite ? MAX_DATE_ISO : draft.end,
-      indefinite: draft.indefinite,
+      end,
+      indefinite,
       confidentiality: draft.confidentiality,
       categoryIds: draft.categoryIds
     };
 
     try {
       if (mode.kind === 'add') {
-        // episodeType is omitted: the server derives it from the dates.
+        // episodeType is omitted: the server derives it from the dates, and the dates
+        // normalised above are the ones that make it derive the chosen type.
         await api.insertEpisode({
           timelineId: timeline.timelineId,
           startPrecision: 0,
@@ -253,7 +292,7 @@ export function EpisodeDialog({
       } else {
         await api.updateEpisode({
           timelineId: timeline.timelineId,
-          episode: { ...mode.episode, ...fields }
+          episode: { ...mode.episode, ...fields, episodeType: draft.episodeType }
         });
       }
       onChanged();
@@ -317,31 +356,70 @@ export function EpisodeDialog({
             />
           </label>
 
-          <div className="pair">
-            <label>
-              Starts
-              <input type="date" value={draft.start} onChange={e => set('start', e.target.value)} />
-            </label>
+          <div className="episode-type" role="radiogroup" aria-label="Episode type">
+            <span className="field-label">Type</span>
 
-            <label>
-              Ends
-              <input
-                type="date"
-                value={draft.end}
-                disabled={draft.indefinite}
-                onChange={e => set('end', e.target.value)}
-              />
-            </label>
+            <div className="type-options">
+              <label>
+                <input
+                  type="radio"
+                  name="episode-type"
+                  checked={isIncident}
+                  onChange={() => setEpisodeType(EpisodeType.Incident)}
+                />
+                <span>
+                  Incident <em>— happened on one day</em>
+                </span>
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="episode-type"
+                  checked={!isIncident}
+                  onChange={() => setEpisodeType(EpisodeType.Era)}
+                />
+                <span>
+                  Era <em>— ran over two or more days</em>
+                </span>
+              </label>
+            </div>
           </div>
 
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={draft.indefinite}
-              onChange={e => set('indefinite', e.target.checked)}
-            />
-            Ongoing (no end date yet)
-          </label>
+          {isIncident ? (
+            <label>
+              Date
+              <input type="date" value={draft.start} onChange={e => setStart(e.target.value)} />
+            </label>
+          ) : (
+            <>
+              <div className="pair">
+                <label>
+                  Starts
+                  <input type="date" value={draft.start} onChange={e => setStart(e.target.value)} />
+                </label>
+
+                <label>
+                  Ends
+                  <input
+                    type="date"
+                    value={draft.end}
+                    disabled={draft.indefinite}
+                    onChange={e => set('end', e.target.value)}
+                  />
+                </label>
+              </div>
+
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={draft.indefinite}
+                  onChange={e => set('indefinite', e.target.checked)}
+                />
+                Ongoing (no end date yet)
+              </label>
+            </>
+          )}
 
           <label>
             Visible to
