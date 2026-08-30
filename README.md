@@ -23,7 +23,7 @@ You record **episodes** (jobs, homes, relationships, illnesses, cars, speeding t
 | Jun 2025 | A Next.js front end, barely started. |
 | Aug 2026 | Next.js discarded, React + Vite front end built, the v1 layout engine reproduced as a pure module, editing moved into the app, and the spreadsheet retired as the source of truth. |
 
-The 2026 pass is where it became a real application rather than a viewer: episode, category, subject and timeline editing; per-category icons and colours; confidentiality filtering; zoom; episode images; and JSON export.
+The 2026 pass is where it became a real application rather than a viewer: episode, category, subject and timeline editing; per-category icons and colours; confidentiality filtering; zoom; episode images; Markdown narratives; and JSON export.
 
 ---
 
@@ -37,7 +37,7 @@ So:
 
 - The data file lives outside the repository, on the user's own disk (path in a gitignored `.env`). Only fabricated sample data is committed.
 - The API binds to loopback. The front end is a static SPA served by Vite on `127.0.0.1`, which proxies `/api/*` so the browser stays same-origin and the API needs no CORS policy at all.
-- There are **no outbound calls**. Deliberately, there is no fetch-an-image-from-a-URL feature: it would make the API issue requests to addresses a page supplied, and it would be the first outbound connection in a design whose premise is that nothing leaves the machine.
+- There are **no outbound calls**. Deliberately, there is no fetch-an-image-from-a-URL feature: it would make the API issue requests to addresses a page supplied, and it would be the first outbound connection in a design whose premise is that nothing leaves the machine. A picture in a narrative resolves only to the timeline's own image folder for the same reason — a remote `src` would be fetched the moment the narrative was opened, leaking which episode is being read, and when.
 - Uploaded images are decoded and re-encoded rather than copied, which strips EXIF. A phone writes GPS coordinates into every photo, so a picture of a house you lived in carries that address in its metadata — exactly the data being kept off the network in the first place.
 - Export produces a file byte-compatible with the store's own format. The data belongs to whoever entered it and must be retrievable in a form that is useful without this application.
 
@@ -49,7 +49,9 @@ Hosting is not ruled out forever, but only in a shape where real timeline data s
 
 A single JSON file, `timeline-data.json`, read and written in place by the API. `Episodes`, `Categories` and `TimelineInfo` all live in it, and it is the **source of truth**.
 
-Images sit beside it in an `images/<timeline id>/` directory derived from the data file's own path, so a timeline is one portable folder — the JSON and its pictures together — that you can move, back up, or hand to someone. Only the file *name* is stored; thumbnails are derived data, cached elsewhere and disposable.
+Images sit beside it in an `images/<timeline id>/` directory derived from the data file's own path, and long-form **narratives** — the Markdown account of an episode, written in the app or in your own editor — sit beside those in `narratives/<timeline id>/`. So a timeline is one portable folder — the JSON, its pictures and its prose together — that you can move, back up, or hand to someone. Only the file *name* is stored in either case; thumbnails are derived data, cached elsewhere and disposable.
+
+Prose is a file rather than a JSON field for reasons that are not the reasons images are: a thousand words in an escaped JSON string makes a backup's diff useless, rewrites the whole timeline file on every save, and sits somewhere no editor can open it.
 
 **The spreadsheet is history.** Until 2026-08-30 the Excel workbook was authoritative and the JSON was regenerated from it by `Pictura.Vita.Excel.Importer`. That reversed when editing moved into the app: the workbook has no column for image names, category icons and colours, or confidentiality, so keeping it authoritative would mean losing all of that on every import. The importer still builds, but running it against the real data file is now **destructive** — it replaces the timeline it previously wrote. Treat it as a one-off migration tool that has already done its job. Details, and the escape hatch if it is ever needed again, are in [docs/data-store.md](docs/data-store.md).
 
@@ -69,7 +71,7 @@ npm --prefix web/pictura-vita-app run dev
 
 The app is then at <http://127.0.0.1:5173>, proxying `/api/*` to `http://localhost:5199`.
 
-Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `DATA_FILE_PATH`. Point it at the sample data in the build output to try it without any real data of your own. A missing or wrong path fails at startup with an explicit message rather than quietly serving an empty timeline. Note that `dotenv.net` *overwrites* real environment variables, so exporting `DATA_FILE_PATH` in your shell will not override the file — edit it.
+Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `DATA_FILE_PATH`. Point it at the sample data in the build output to try it without any real data of your own. A missing or wrong path fails at startup with an explicit message rather than quietly serving an empty timeline. The API loads `.env` with `overwriteExistingVars: false`, so a value exported in your shell **wins** over the file — which is what makes `DATA_FILE_PATH=/tmp/scratch.json dotnet run …` a safe way to point a run at throwaway data without touching your `.env`.
 
 Tests: `dotnet test src/Pictura.Vita.slnx` for the back end, `npm --prefix web/pictura-vita-app test` for the layout engine.
 
@@ -82,7 +84,7 @@ src/                              .NET solution
   Pictura.Vita.Domain/            Episode, Category, Timeline, TimelineInfo, the enums
   Pictura.Vita.Domain.Extensions/ Derived values (duration, display names) kept off the storage records
   Pictura.Vita.Data/              JsonFlatFileDataStore provider; fabricated sample data
-  Pictura.Vita.Api/               Minimal API, FluentValidation, image store and thumbnailer
+  Pictura.Vita.Api/               Minimal API, FluentValidation, image store and thumbnailer, narrative store
   Pictura.Vita.Messaging/         Insert/update request contracts
   Pictura.Vita.Excel.Importer/    One-off spreadsheet migration (see the warning above)
   Pictura.Vita.Utility/           Deterministic GUIDs, Result<T>, date helpers
@@ -106,6 +108,7 @@ Zoom recomputes client-side. v1 refetched from the server on every zoom; when la
 | [docs/original-version-spec.md](docs/original-version-spec.md) | v1's data model, stored-procedure contract and layout algorithm, reverse-engineered from the archive — including the bugs deliberately not reproduced |
 | [docs/data-store.md](docs/data-store.md) | Where the data lives, and why the importer is now retired |
 | [docs/image-support.md](docs/image-support.md) | Image storage, EXIF stripping, thumbnail cache, path-traversal defences |
+| [docs/narrative-support.md](docs/narrative-support.md) | Markdown narratives: why a file and not a field, naming, and why the renderer needs no sanitizer |
 | [web/pictura-vita-app/README.md](web/pictura-vita-app/README.md) | Front-end scripts and the layout engine in detail |
 
 These are working notes rather than user documentation: they record *why* a decision went the way it did, which is the part that is expensive to recover later.

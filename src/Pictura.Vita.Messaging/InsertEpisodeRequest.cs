@@ -19,6 +19,9 @@ public record InsertEpisodeRequest
     /// <summary>File name of the episode's image; empty for none. See <see cref="Episode.ImageName"/>.</summary>
     public required string ImageName { get; init; }
 
+    /// <summary>File name of the episode's narrative; empty for none. See <see cref="Episode.NarrativeName"/>.</summary>
+    public required string NarrativeName { get; init; }
+
     public required DatePrecision StartPrecision { get; init; }
 
     public required DateOnly Start { get; init; }

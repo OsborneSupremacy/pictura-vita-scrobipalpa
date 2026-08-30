@@ -208,6 +208,100 @@ main { padding: 16px 20px 40px; }
 
 .image-actions .link { margin-left: 0; }
 
+/* ---- Episode narrative editor ---- */
+
+/* Same grid as .episode-image, and for the same reason: it holds a tab strip, an editor and
+   a file name, none of which belong inside a <label>. */
+.episode-narrative {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.narrative-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.narrative-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--page);
+  border-radius: 5px;
+}
+
+.narrative-tabs button {
+  padding: 2px 10px;
+  font: inherit;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.narrative-tabs button.selected {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Monospaced because it is Markdown being written, not prose being read: the alignment of
+   list markers and the leading hashes of a heading are the point. */
+.narrative-editor {
+  padding: 8px 10px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.narrative-editor[readonly] { background: var(--page); color: var(--muted); }
+
+/* Sized to the editor it replaces, so switching tabs does not move the rest of the dialog. */
+.narrative-preview {
+  min-height: 220px;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.narrative-preview.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-style: italic;
+}
+
+.narrative-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.narrative-file input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.narrative-file .link { margin-left: 0; }
+
 .fields > label.check {
   display: flex;
   align-items: center;
@@ -1104,3 +1198,163 @@ main { padding: 16px 20px 40px; }
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
+
+/* ---- Narrative reader ---- */
+
+.narrative-link { margin: 10px 0 0; }
+
+.narrative-link .link { margin-left: 0; font-size: 13px; }
+
+/* Fixed to the viewport for the same reason the lightbox is: prose constrained to the
+   detail panel's corner of the page would be no easier to read than the panel. */
+.narrative-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 24px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.narrative-sheet {
+  display: flex;
+  flex-direction: column;
+  /* 68ch is the measure long-form prose wants; the viewport bound keeps it honest on a
+     narrow window. */
+  width: min(68ch, 100%);
+  max-height: 90vh;
+  padding: 20px 28px 28px;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  cursor: auto;
+}
+
+.narrative-sheet header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.narrative-sheet h3 { margin: 0; font-size: 17px; }
+
+.narrative-sheet header button {
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.narrative-sheet .narrative-body {
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+/* ---- Rendered narrative ---- */
+
+/* The one place in the application where the markup is not written by a component: it comes
+   from markdown-it, so the elements are styled by tag rather than by class. */
+.narrative-body {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.narrative-body > :first-child { margin-top: 0; }
+.narrative-body > :last-child { margin-bottom: 0; }
+
+.narrative-body p { margin: 0 0 1em; }
+
+.narrative-body h1,
+.narrative-body h2,
+.narrative-body h3,
+.narrative-body h4 {
+  margin: 1.6em 0 0.5em;
+  line-height: 1.25;
+}
+
+.narrative-body h1 { font-size: 1.5em; }
+.narrative-body h2 { font-size: 1.25em; }
+.narrative-body h3 { font-size: 1.1em; }
+.narrative-body h4 { font-size: 1em; }
+
+.narrative-body ul,
+.narrative-body ol { margin: 0 0 1em; padding-left: 1.4em; }
+
+.narrative-body li { margin: 0.2em 0; }
+
+.narrative-body blockquote {
+  margin: 0 0 1em;
+  padding: 0.1em 0 0.1em 1em;
+  color: var(--muted);
+  border-left: 3px solid var(--line);
+}
+
+.narrative-body code {
+  padding: 0.1em 0.35em;
+  font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--page);
+  border-radius: 3px;
+}
+
+.narrative-body pre {
+  margin: 0 0 1em;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--page);
+  border-radius: 5px;
+}
+
+.narrative-body pre code { padding: 0; background: none; }
+
+.narrative-body hr {
+  margin: 1.8em 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.narrative-body table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+}
+
+.narrative-body th,
+.narrative-body td {
+  padding: 5px 8px;
+  text-align: left;
+  border: 1px solid var(--line);
+}
+
+.narrative-body th { background: var(--page); }
+
+/* Centred and bounded: a picture in a narrative is an illustration in a column of text,
+   not a full-bleed image. */
+.narrative-body img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  margin: 1.2em auto;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+/* What is shown in place of a picture the renderer refused to fetch — anything not in this
+   timeline's own image folder. The alt text is what the author wrote about it. */
+.narrative-body .narrative-no-image {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  font-style: italic;
+  color: var(--muted);
+  background: var(--page);
+  border-radius: 3px;
+}
+
+.narrative-body .bad { color: #b91c1c; }

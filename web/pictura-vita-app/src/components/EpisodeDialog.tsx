@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
-import { api, imageUrl, uploadImage } from '../api/client';
+import { api, fetchNarrative, imageUrl, saveNarrative, uploadImage } from '../api/client';
 import { Confidentiality, EpisodeType, type ApiEpisode, type ApiTimeline } from '../api/types';
 import { MAX_DATE_ISO, toIso, type DayNumber } from '../layout';
+import { countWords, renderNarrative } from '../markdown/narrative';
 
 /**
  * Adding and editing differ only in where the draft starts and which call saves it, so
@@ -22,6 +23,13 @@ interface Props {
   availableImages: readonly string[];
   /** Fired when an upload adds a file, so the owner can keep its list current. */
   onImageAdded: (imageName: string) => void;
+  /**
+   * Narrative file names present on disk. Offered as suggestions, and used to decide whether
+   * a name already has text worth loading into the editor.
+   */
+  availableNarratives: readonly string[];
+  /** Fired when a save writes a new narrative file, so the owner can keep its list current. */
+  onNarrativeAdded: (narrativeName: string) => void;
   today: DayNumber;
   /** Fired after the episode is saved or deleted, so the owner can refetch. */
   onChanged: () => void;
@@ -35,6 +43,11 @@ interface Draft {
   url: string;
   urlDescription: string;
   imageName: string;
+  /**
+   * File name of the narrative. Held separately from its text: the name is part of the
+   * episode and is saved with it, while the text is a file the API writes on its own.
+   */
+  narrativeName: string;
   /** `EpisodeType.Incident` or `EpisodeType.Era`. An incident holds `end` equal to `start`. */
   episodeType: number;
   start: string;
@@ -63,6 +76,7 @@ const fromEpisode = (episode: ApiEpisode): Draft => ({
   urlDescription: episode.urlDescription,
   // Null in episodes written before images existed.
   imageName: episode.imageName ?? '',
+  narrativeName: episode.narrativeName ?? '',
   episodeType: episode.episodeType,
   start: episode.start,
   end: episode.end === MAX_DATE_ISO ? '' : episode.end,
@@ -79,6 +93,7 @@ const blankDraft = (categoryIds: string[], today: DayNumber): Draft => ({
   url: '',
   urlDescription: '',
   imageName: '',
+  narrativeName: '',
   episodeType: EpisodeType.Incident,
   start: toIso(today),
   end: toIso(today),
@@ -118,6 +133,40 @@ function describeImageName(
   };
 }
 
+/**
+ * What to say under the narrative editor.
+ *
+ * Like the image hint, none of this blocks saving. An episode is worth recording whether or
+ * not the long version of it has been written yet.
+ */
+function describeNarrative(
+  name: string,
+  text: string,
+  available: readonly string[]
+): { text: string; bad: boolean } {
+  const trimmed = name.trim();
+  const words = countWords(text);
+  const length = words === 1 ? '1 word' : `${words.toLocaleString()} words`;
+
+  if (text.trim()) {
+    return trimmed
+      ? { text: `${length}, saved to ${trimmed}.`, bad: false }
+      : { text: `${length}. A file will be named after the episode's title when you save.`, bad: false };
+  }
+
+  if (trimmed && !available.includes(trimmed)) {
+    return {
+      text: `No file called ${trimmed} is in the narratives folder \u2014 saving will create it.`,
+      bad: false
+    };
+  }
+
+  return {
+    text: 'Markdown. Headings, lists, links and pictures from your images folder all work.',
+    bad: false
+  };
+}
+
 function problemWith(draft: Draft): string | null {
   if (!draft.title.trim()) return 'Give the episode a title.';
   if (draft.categoryIds.length === 0) return 'Choose at least one category.';
@@ -142,6 +191,8 @@ export function EpisodeDialog({
   today,
   availableImages,
   onImageAdded,
+  availableNarratives,
+  onNarrativeAdded,
   onChanged,
   onClose
 }: Props) {
@@ -155,6 +206,16 @@ export function EpisodeDialog({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draggingOver, setDraggingOver] = useState(false);
+
+  // The narrative's text is not part of the draft: it is a separate file with its own save
+  // call, and only the *name* belongs to the episode. `loadedNarrative` is what came off
+  // disk, so the dialog can tell an untouched narrative from an edited one and skip writing
+  // a file that has not changed.
+  const [narrative, setNarrative] = useState('');
+  const [loadedNarrative, setLoadedNarrative] = useState('');
+  const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
+  const [narrativeState, setNarrativeState] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const [previewing, setPreviewing] = useState(false);
 
   useEffect(() => {
     const element = dialog.current;
@@ -212,6 +273,57 @@ export function EpisodeDialog({
     return () => element.removeEventListener('paste', onPaste);
   });
 
+  /**
+   * Loads the narrative behind whatever name the draft points at.
+   *
+   * Keyed on the name rather than running once on mount, so picking a different file from
+   * the list shows that file. Two guards keep it from destroying work: it does not reload a
+   * name it already loaded, and it will not run at all while the editor holds unsaved
+   * changes — replacing typed text with the contents of another file is not something
+   * choosing a name should silently do. Text typed against one name and then pointed at
+   * another is written to the new name on save, which is how a narrative gets renamed.
+   */
+  useEffect(() => {
+    const name = draft.narrativeName.trim();
+
+    // Nothing to load: no name, or a name with no file behind it yet — which is the normal
+    // state of a narrative being written for the first time.
+    if (!name || !availableNarratives.includes(name)) return;
+    if (name === loadedFrom) return;
+    if (narrative !== loadedNarrative) return;
+
+    let current = true;
+    setNarrativeState('loading');
+
+    fetchNarrative(timeline.timelineId, name)
+      .then(text => {
+        if (!current) return;
+        setNarrative(text ?? '');
+        setLoadedNarrative(text ?? '');
+        setLoadedFrom(name);
+        setNarrativeState('idle');
+      })
+      .catch(() => {
+        if (!current) return;
+        // Not an error banner: the episode's other fields are still editable and saveable.
+        // What must not happen is writing an empty editor over a file that merely could not
+        // be read, and `failed` is what stops the save path from doing that.
+        setLoadedFrom(name);
+        setNarrativeState('failed');
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [
+    draft.narrativeName,
+    availableNarratives,
+    timeline.timelineId,
+    loadedFrom,
+    narrative,
+    loadedNarrative
+  ]);
+
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDraggingOver(false);
@@ -265,21 +377,57 @@ export function EpisodeDialog({
     const indefinite = !isIncident && draft.indefinite;
     const end = isIncident ? draft.start : indefinite ? MAX_DATE_ISO : draft.end;
 
-    const fields = {
-      title: draft.title.trim(),
-      subtitle: draft.subtitle,
-      description: draft.description,
-      url: draft.url,
-      urlDescription: draft.urlDescription,
-      imageName: draft.imageName.trim(),
-      start: draft.start,
-      end,
-      indefinite,
-      confidentiality: draft.confidentiality,
-      categoryIds: draft.categoryIds
+    const title = draft.title.trim();
+
+    /**
+     * Writes the narrative file, if there is one to write, and answers with the name the
+     * episode should record.
+     *
+     * The file goes first because only the server knows what a newly created one is called
+     * — the name has to come back before the episode can point at it. If the episode save
+     * then fails, the file is left behind unreferenced: a stray .md in a folder, which is
+     * the better half of the trade against losing prose that was just typed.
+     *
+     * Skipped entirely when nothing changed, so opening an episode and pressing Save does
+     * not rewrite a file and move its timestamp.
+     */
+    const resolveNarrativeName = async (): Promise<string> => {
+      const name = draft.narrativeName.trim();
+
+      // The file could not be read when the dialog opened, so the editor is empty for a
+      // reason that has nothing to do with intent. Keep the reference and leave the file
+      // alone rather than overwriting it with that emptiness.
+      if (narrativeState === 'failed') return name;
+
+      if (narrative === loadedNarrative) return name;
+      // Nothing typed and nothing on disk: no file, no name.
+      if (!narrative.trim() && !name) return '';
+
+      const stored = await saveNarrative(timeline.timelineId, name, title, narrative);
+      // Tell the owner before anything re-reads the listing, or a file that was just written
+      // reads as missing.
+      onNarrativeAdded(stored);
+      return stored;
     };
 
     try {
+      const narrativeName = await resolveNarrativeName();
+
+      const fields = {
+        title,
+        subtitle: draft.subtitle,
+        description: draft.description,
+        url: draft.url,
+        urlDescription: draft.urlDescription,
+        imageName: draft.imageName.trim(),
+        narrativeName,
+        start: draft.start,
+        end,
+        indefinite,
+        confidentiality: draft.confidentiality,
+        categoryIds: draft.categoryIds
+      };
+
       if (mode.kind === 'add') {
         // episodeType is omitted: the server derives it from the dates, and the dates
         // normalised above are the ones that make it derive the chosen type.
@@ -321,6 +469,7 @@ export function EpisodeDialog({
   const sortedCategories = [...timeline.categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const imageHint = describeImageName(draft.imageName, availableImages);
+  const narrativeHint = describeNarrative(draft.narrativeName, narrative, availableNarratives);
 
   // Only for a name that actually resolves; a half-typed one would 404 on every keystroke.
   const preview =
@@ -520,6 +669,106 @@ export function EpisodeDialog({
 
             <small className={uploadError ?? imageHint.bad ? 'bad' : 'muted'}>
               {uploadError ?? imageHint.text}
+            </small>
+          </div>
+
+          {/* The long version. Kept below the image because it is the last thing you write
+              and the least often filled in — most episodes are a date and a title. */}
+          <div className="episode-narrative">
+            <div className="narrative-header">
+              <span className="field-label">Narrative</span>
+
+              <div className="narrative-tabs" role="tablist" aria-label="Narrative view">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!previewing}
+                  className={previewing ? '' : 'selected'}
+                  onClick={() => setPreviewing(false)}
+                >
+                  Write
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewing}
+                  className={previewing ? 'selected' : ''}
+                  onClick={() => setPreviewing(true)}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            {previewing ? (
+              narrative.trim() ? (
+                // Safe because the renderer never emits HTML from the text: raw HTML is
+                // escaped and images are restricted to this timeline's own folder.
+                <div
+                  className="narrative-body narrative-preview"
+                  dangerouslySetInnerHTML={{
+                    __html: renderNarrative(narrative, {
+                      timelineId: timeline.timelineId,
+                      availableImages
+                    })
+                  }}
+                />
+              ) : (
+                <p className="narrative-preview empty muted">Nothing written yet.</p>
+              )
+            ) : (
+              <textarea
+                className="narrative-editor"
+                rows={12}
+                value={narrative}
+                placeholder={
+                  narrativeState === 'loading'
+                    ? 'Reading…'
+                    : 'The long version — what happened, who was there, what it was like.'
+                }
+                // Read-only rather than editable-and-empty: typing into an editor that failed
+                // to load its file, then saving, would overwrite prose that is still there.
+                readOnly={narrativeState !== 'idle'}
+                onChange={e => setNarrative(e.target.value)}
+              />
+            )}
+
+            <div className="narrative-file">
+              <input
+                value={draft.narrativeName}
+                list="episode-narrative-names"
+                placeholder="File name (chosen for you when you save)"
+                onChange={e => set('narrativeName', e.target.value)}
+              />
+              <datalist id="episode-narrative-names">
+                {availableNarratives.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+
+              {draft.narrativeName && (
+                <button
+                  type="button"
+                  className="link"
+                  // Unlinks rather than deletes, exactly as removing an image does: the file
+                  // stays in the folder, and the episode stops pointing at it.
+                  onClick={() => {
+                    set('narrativeName', '');
+                    setNarrative('');
+                    setLoadedNarrative('');
+                    setLoadedFrom(null);
+                    setNarrativeState('idle');
+                  }}
+                >
+                  Unlink
+                </button>
+              )}
+            </div>
+
+            <small className={narrativeHint.bad ? 'bad' : 'muted'}>
+              {narrativeState === 'failed'
+                ? `${draft.narrativeName} could not be read, so it is shown empty and will be left alone on save.`
+                : narrativeHint.text}
             </small>
           </div>
         </div>

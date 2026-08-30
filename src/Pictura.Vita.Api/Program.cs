@@ -1,6 +1,7 @@
 using dotenv.net;
 using Microsoft.AspNetCore.Http.Features;
 using Pictura.Vita.Api.Images;
+using Pictura.Vita.Api.Narratives;
 using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
 using Pictura.Vita.Api.Validators;
@@ -66,6 +67,10 @@ if (!File.Exists(dataFilePath))
 // logged, because "no images anywhere" and "IMAGE_ROOT_PATH is mistyped" otherwise look
 // exactly the same from the outside.
 var imageStore = ImageStore.Create(dataFilePath);
+
+// Narratives sit beside the images, derived from the same data file path, and are optional
+// in exactly the same way.
+var narrativeStore = NarrativeStore.Create(dataFilePath);
 
 var dataStore = new DataStore(dataFilePath);
 var timelineProvider = new TimelineProvider(dataStore);
@@ -214,6 +219,47 @@ app.MapGet("/timeline/{id:guid}/image/{name}", (
     .WithDisplayName("Get an episode image, full size or as a thumbnail")
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound);
+
+// narrative endpoints
+//
+// The long-form Markdown account of an episode. Stored as a file for the reasons in
+// docs/narrative-support.md; served through the API for the same reason images are, so the
+// containment check that turns a name from a data file into a path lives in one place.
+
+app.MapGet("/timeline/{id:guid}/narratives", ([FromRoute]Guid id) =>
+        Results.Ok(narrativeStore.List(id)))
+    .WithDisplayName("Get the narrative file names present for a timeline")
+    .Produces<IEnumerable<string>>();
+
+app.MapGet("/timeline/{id:guid}/narrative/{name}", (
+        [FromRoute]Guid id,
+        [FromRoute]string name) =>
+    {
+        var text = narrativeStore.Read(id, name, app.Logger);
+
+        // As with images, every failure answers the same 404 so probing says nothing about
+        // what exists outside the sandbox.
+        return text is null
+            ? Results.NotFound()
+            : Results.Text(text, "text/markdown", System.Text.Encoding.UTF8);
+    })
+    .WithDisplayName("Get an episode's narrative as Markdown")
+    .Produces<string>()
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPut("/timeline/{id:guid}/narrative", async (
+        [FromRoute]Guid id,
+        [FromBody]SaveNarrativeRequest request) =>
+    {
+        var saved = narrativeStore.Save(id, request.Name, request.Stem, request.Text ?? string.Empty, app.Logger);
+
+        return saved.IsSuccess
+            ? Results.Ok(new { narrativeName = saved.Value })
+            : Results.BadRequest(new { error = saved.Exception.Message });
+    })
+    .WithDisplayName("Write an episode's narrative")
+    .Produces(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status400BadRequest);
 
 // category endpoints
 
@@ -364,5 +410,28 @@ app.Logger.LogInformation(
     imageStore.Root,
     imageStore.RootExists ? string.Empty : " (does not exist yet; the first upload creates it)");
 
+app.Logger.LogInformation(
+    "Narrative root: {Root}{Note}",
+    narrativeStore.Root,
+    narrativeStore.RootExists ? string.Empty : " (does not exist yet; the first save creates it)");
+
 app.Run();
+
+/// <summary>
+/// Body of a narrative save.
+///
+/// <c>Name</c> is the file to write when the episode already points at one, and empty when it
+/// does not — in which case <c>Stem</c> (the episode's title) seeds a generated name. Unlike
+/// an image name it is accepted from the client, because a narrative is edited repeatedly and
+/// its name must not move underneath the episode referring to it; <see cref="NarrativeStore"/>
+/// puts it through the same containment check the read path uses.
+/// </summary>
+internal sealed record SaveNarrativeRequest
+{
+    public string? Name { get; init; }
+
+    public string? Stem { get; init; }
+
+    public string? Text { get; init; }
+}
 

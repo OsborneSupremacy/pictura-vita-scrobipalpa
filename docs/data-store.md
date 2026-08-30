@@ -29,6 +29,7 @@ matches the timeline already there. Everything the workbook has no column for is
 as the importer's default and lost:
 
 - every `imageName` (the workbook has no image column, and now never will)
+- every `narrativeName`, orphaning the files in `narratives/` (see `narrative-support.md`)
 - every category `icon` and `color`, which the importer writes as empty
 - every `confidentiality` level, which the importer writes as `OnlyMe`
 - every edit made in the app since the last import
@@ -43,7 +44,8 @@ DATA_FILE_PATH=/tmp/scratch.json dotnet run --project src/Pictura.Vita.Excel.Imp
 
 The `ImageName` column the importer reads (column 9) is vestigial for the same reason. It
 stays because removing it would only make the reader disagree with the domain model, and
-costs nothing where the column is absent — a blank cell reads as "no image".
+costs nothing where the column is absent — a blank cell reads as "no image". There is no
+narrative column at all; the importer writes `NarrativeName` as empty.
 
 ## Editing
 

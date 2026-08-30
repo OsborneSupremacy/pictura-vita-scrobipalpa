@@ -443,6 +443,92 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             .Be("first-day-at-acme.png");
     }
 
+    /// <summary>
+    /// The same field-by-field copy that dropped ImageName would drop NarrativeName. It is
+    /// worth its own test rather than trusting the pattern: unlike an image, whose bytes the
+    /// upload endpoint can always be pointed at again, a narrative reference that vanishes
+    /// leaves prose the user typed sitting in a file nothing links to.
+    /// </summary>
+    [Fact]
+    public async Task UpdateEpisodeAsync_KeepsTheNarrativeName()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with { NarrativeName = "moving-to-kalamazoo.md" }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .NarrativeName.Should()
+            .Be("moving-to-kalamazoo.md");
+    }
+
+    [Fact]
+    public async Task UpdateEpisodeAsync_CanClearTheNarrativeName()
+    {
+        // arrange — an episode that already has a narrative, so the empty string has to
+        // survive the round trip rather than being read as "unchanged".
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var episode = timeline.Episodes.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = episode with { NarrativeName = "before.md" }
+        });
+
+        var withNarrative = (await sut.GetEpisodeAsync(episode.EpisodeId)).Value;
+
+        // act
+        await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
+        {
+            TimelineId = timeline.TimelineId,
+            Episode = withNarrative with { NarrativeName = string.Empty }
+        });
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
+            .NarrativeName.Should()
+            .BeEmpty();
+    }
+
+    [Fact]
+    public async Task InsertEpisodeAsync_KeepsTheNarrativeName()
+    {
+        // arrange
+        var timeline = _dataStoreFixture.GetTimelines().First();
+        var category = timeline.Categories.First();
+        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+
+        // act
+        var inserted = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+            .Build<InsertEpisodeRequest>()
+            .With(x => x.TimelineId, timeline.TimelineId)
+            .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
+            .With(x => x.Indefinite, false)
+            .With(x => x.NarrativeName, "first-day-at-acme.md")
+            .Create())).Value;
+
+        // assert
+        _dataStoreFixture.GetTimelinesFromDisk()
+            .Single(t => t.TimelineId == timeline.TimelineId)
+            .Episodes.Single(e => e.EpisodeId == inserted.EpisodeId)
+            .NarrativeName.Should()
+            .Be("first-day-at-acme.md");
+    }
+
     [Fact]
     public async Task DeleteEpisodeAsync_RemovesTheEpisodeAndWritesThroughToTheFile()
     {

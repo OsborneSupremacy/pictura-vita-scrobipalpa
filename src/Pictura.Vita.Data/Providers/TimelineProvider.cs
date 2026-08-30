@@ -211,6 +211,7 @@ public class TimelineProvider
             Url = request.Url,
             UrlDescription = request.UrlDescription,
             ImageName = request.ImageName,
+            NarrativeName = request.NarrativeName,
             EpisodeType = !request.Indefinite && request.Start.Equals(request.End)
                 ? EpisodeType.Incident
                 : EpisodeType.Era,
@@ -272,6 +273,7 @@ public class TimelineProvider
             Url = request.Episode.Url,
             UrlDescription = request.Episode.UrlDescription,
             ImageName = request.Episode.ImageName,
+            NarrativeName = request.Episode.NarrativeName,
             // Derived from the dates, exactly as on insert. Trusting the client here let an
             // episode edited down to a single day stay typed as an Era, so it drew as a bar
             // instead of the callout an identical new episode would have got.

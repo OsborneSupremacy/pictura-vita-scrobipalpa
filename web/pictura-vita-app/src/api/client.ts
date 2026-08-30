@@ -129,6 +129,66 @@ export async function uploadImage(timelineId: string, file: File, stem: string):
   throw new Error(problem?.error ?? `Upload failed: ${response.status} ${response.statusText}`);
 }
 
+/**
+ * Fetches an episode's narrative as Markdown.
+ *
+ * Not `get<T>` above: the response is text/markdown, not JSON. Returns null for a 404, which
+ * is every way the file can fail to be there — a name pointing at nothing, a file deleted
+ * since the listing was taken, or one iCloud cannot fetch back right now. The reader treats
+ * all three the same: there is nothing to read.
+ */
+export async function fetchNarrative(timelineId: string, name: string): Promise<string | null> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${baseUrl}/timeline/${timelineId}/narrative/${encodeURIComponent(name)}`
+    );
+  } catch {
+    throw new ApiUnreachableError();
+  }
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Could not read ${name}: ${response.status} ${response.statusText}`);
+
+  return response.text();
+}
+
+/**
+ * Writes an episode's narrative and returns the file name it was stored under.
+ *
+ * `name` is the file the episode already points at, or empty for one that has none — the
+ * server generates a name from `stem` (the episode title) in that case. The name comes back
+ * either way, because only the server knows what a generated one ended up being once
+ * collisions with existing files are resolved.
+ */
+export async function saveNarrative(
+  timelineId: string,
+  name: string,
+  stem: string,
+  text: string
+): Promise<string> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}/timeline/${timelineId}/narrative`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, stem, text })
+    });
+  } catch {
+    throw new ApiUnreachableError();
+  }
+
+  if (response.ok) {
+    const saved = (await response.json()) as { narrativeName: string };
+    return saved.narrativeName;
+  }
+
+  const problem = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(problem?.error ?? `Could not save the narrative: ${response.status} ${response.statusText}`);
+}
+
 export const api = {
   timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
   timelines: () => get<ApiTimeline[]>('/timelines'),
@@ -142,6 +202,14 @@ export const api = {
    * a box that collapses afterwards.
    */
   timelineImages: (id: string) => get<string[]>(`/timeline/${id}/images`),
+  /**
+   * The narrative file names present on disk for a timeline.
+   *
+   * Fetched alongside the timeline for the same reason as the image listing: the detail
+   * panel has to decide whether to offer "Read narrative" before it draws, and a button
+   * that turns out to open nothing is worse than no button.
+   */
+  timelineNarratives: (id: string) => get<string[]>(`/timeline/${id}/narratives`),
   updateTimelineInfo: (request: UpdateTimelineInfoRequest) => send('PUT', '/timeline', request),
 
   insertCategory: (request: InsertCategoryRequest) => send('POST', '/category', request),

@@ -17,26 +17,29 @@ export default function App() {
   const [summaries, setSummaries] = useState<ApiTimelineSummary[]>([]);
   const [timeline, setTimeline] = useState<ApiTimeline | null>(null);
   const [availableImages, setAvailableImages] = useState<readonly string[]>([]);
+  const [availableNarratives, setAvailableNarratives] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
   const [editingCategories, setEditingCategories] = useState(false);
 
   /**
-   * Loads a timeline and the image names that exist for it.
+   * Loads a timeline together with the image and narrative names that exist for it.
    *
-   * The two are fetched together so the first render already knows which images are real.
-   * A failure to list images is swallowed on purpose: images are an optional extra, and
-   * losing the whole timeline because an image directory could not be read would be a poor
-   * trade.
+   * All three are fetched at once so the first render already knows which side files are
+   * real. A failure to list either directory is swallowed on purpose: both are optional
+   * extras, and losing the whole timeline because one of them could not be read would be a
+   * poor trade.
    */
   const load = async (id: string) => {
-    const [loaded, images] = await Promise.all([
+    const [loaded, images, narratives] = await Promise.all([
       api.timeline(id),
-      api.timelineImages(id).catch(() => [] as string[])
+      api.timelineImages(id).catch(() => [] as string[]),
+      api.timelineNarratives(id).catch(() => [] as string[])
     ]);
 
     setTimeline(loaded);
     setAvailableImages(images);
+    setAvailableNarratives(narratives);
   };
 
   useEffect(() => {
@@ -56,6 +59,11 @@ export default function App() {
   const addAvailableImage = (imageName: string) =>
     setAvailableImages(current =>
       current.includes(imageName) ? current : [...current, imageName].sort());
+
+  /** The same fold-in for a narrative written by a save, for the same reason. */
+  const addAvailableNarrative = (narrativeName: string) =>
+    setAvailableNarratives(current =>
+      current.includes(narrativeName) ? current : [...current, narrativeName].sort());
 
   const select = async (id: string) => {
     setError(null);
@@ -138,6 +146,8 @@ export default function App() {
             today={today}
             availableImages={availableImages}
             onImageAdded={addAvailableImage}
+            availableNarratives={availableNarratives}
+            onNarrativeAdded={addAvailableNarrative}
             onChanged={() => void select(timeline.timelineId)}
           />
         </>

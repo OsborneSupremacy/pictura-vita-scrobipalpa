@@ -1,19 +1,15 @@
-using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Pictura.Vita.Utility;
 
 /// <summary>
-/// Decides whether a stored image name is safe to resolve against a directory.
+/// Decides whether a stored image name is safe to resolve against a directory, and names
+/// freshly uploaded pictures.
 ///
-/// The name arrives from the timeline file, and a timeline file is an input — it is written
-/// by the Excel importer, hand-edited, and copied between machines. Joining an unchecked
-/// name to a root would let "../../.ssh/id_rsa" out of the sandbox, and the API is an HTTP
-/// server on loopback that any page open in the browser can reach.
-///
-/// This lives here rather than in the API so the write path (validators) and the read path
-/// (the image store) cannot disagree about what a legal name is.
+/// The rules live in <see cref="StoredFileName"/>, shared with narratives; this type fixes
+/// the extensions and the naming scheme that are particular to images. It lives in the
+/// utility assembly rather than the API so the write path (validators, the importer) and the
+/// read path (the image store) cannot disagree about what a legal name is.
 /// </summary>
 public static class ImageFileName
 {
@@ -29,22 +25,7 @@ public static class ImageFileName
     /// True when <paramref name="name"/> is a bare file name with a supported extension.
     /// Empty is not safe — it is "no image", which callers must handle before asking.
     /// </summary>
-    public static bool IsValid(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return false;
-
-        // Rejects separators, "..", rooted paths, and volume prefixes in one comparison:
-        // GetFileName returns something different from its input for every one of them.
-        if (!string.Equals(Path.GetFileName(name), name, StringComparison.Ordinal)) return false;
-
-        // GetFileName leaves these alone on the wrong platform — "a\b.jpg" is a legal file
-        // name on macOS but a path on Windows, and the data file travels between them.
-        if (name.Contains('/') || name.Contains('\\')) return false;
-
-        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return false;
-
-        return AllowedExtensions.Contains(Path.GetExtension(name));
-    }
+    public static bool IsValid(string? name) => StoredFileName.IsValid(name, AllowedExtensions);
 
     /// <summary>
     /// A file name for freshly uploaded content: a slug of <paramref name="preferredStem"/>
@@ -58,69 +39,23 @@ public static class ImageFileName
     /// point of storing images as loose files at all. The digest makes the name a function of
     /// the content: uploading the same picture twice lands on the same name instead of
     /// accumulating copies, and two different pictures with the same title cannot collide.
+    ///
+    /// Narratives are named differently — see <see cref="NarrativeFileName.Suggest"/> — for
+    /// the reason content addressing works here and would not work there: an image is
+    /// replaced, a narrative is edited.
     /// </summary>
     public static string Suggest(string? preferredStem, string extension, ReadOnlySpan<byte> content)
     {
-        var slug = Slugify(preferredStem);
+        var slug = StoredFileName.Slugify(preferredStem);
         var digest = Convert.ToHexStringLower(SHA256.HashData(content))[..6];
 
         return $"{slug}-{digest}{extension}";
     }
 
     /// <summary>
-    /// Reduces free text to lowercase ASCII words joined by hyphens. Anything that survives
-    /// is safe in a file name on every platform; anything else is dropped rather than
-    /// transliterated, since the slug is a convenience for reading the folder and the digest
-    /// is what actually distinguishes one file from another.
-    /// </summary>
-    private static string Slugify(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return "image";
-
-        var builder = new StringBuilder(text.Length);
-        var pendingHyphen = false;
-
-        foreach (var character in text.Normalize(NormalizationForm.FormD))
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
-                continue;
-
-            if (char.IsAsciiLetterOrDigit(character))
-            {
-                if (pendingHyphen && builder.Length > 0) builder.Append('-');
-                pendingHyphen = false;
-                builder.Append(char.ToLowerInvariant(character));
-
-                // Long enough to stay recognisable, short enough that the digest and
-                // extension are still visible in a Finder column.
-                if (builder.Length == 48) break;
-            }
-            else
-            {
-                pendingHyphen = true;
-            }
-        }
-
-        return builder.Length == 0 ? "image" : builder.ToString();
-    }
-
-    /// <summary>
     /// The absolute path <paramref name="name"/> resolves to inside <paramref name="root"/>,
-    /// or null when it is not a legal name or escapes the root.
-    ///
-    /// The containment check is repeated after resolution rather than trusted from
-    /// <see cref="IsValid"/> alone: symlinks and case-insensitive volumes make the textual
-    /// check a necessary condition, not a sufficient one.
+    /// or null when it is not a legal image name or escapes the root.
     /// </summary>
-    public static string? ResolveWithin(string root, string? name)
-    {
-        if (!IsValid(name)) return null;
-
-        var rootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        var candidate = Path.GetFullPath(Path.Combine(rootFull, name!));
-
-        var prefix = rootFull + Path.DirectorySeparatorChar;
-
-        return candidate.StartsWith(prefix, StringComparison.Ordinal) ? candidate : null;
-    }
+    public static string? ResolveWithin(string root, string? name) =>
+        StoredFileName.ResolveWithin(root, name, AllowedExtensions);
 }

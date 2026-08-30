@@ -26,6 +26,21 @@ public record Episode
     /// </summary>
     public required string ImageName { get; init; }
 
+    /// <summary>
+    /// File name of the episode's narrative — the long-form Markdown account of it, for
+    /// example "moving-to-kalamazoo.md". Empty for none.
+    ///
+    /// Like <see cref="ImageName"/>, only the name is stored; the text lives on disk under
+    /// the narrative root (see docs/narrative-support.md). Prose runs to thousands of words,
+    /// which a JSON field holds only as one escaped line — unreadable in a diff, rewritten
+    /// whole on every save, and impossible to open in an editor of your own. A name that
+    /// resolves to no file is not an error: the episode simply offers nothing to read.
+    ///
+    /// This does not replace <see cref="Description"/>, which stays the short summary shown
+    /// in the detail panel.
+    /// </summary>
+    public required string NarrativeName { get; init; }
+
     public required EpisodeType EpisodeType { get; init; }
 
     public required DatePrecision StartPrecision { get; init; }

@@ -27,6 +27,10 @@ interface Props {
   availableImages: readonly string[];
   /** Fired when an upload adds a file, so the owner can keep its list current. */
   onImageAdded: (imageName: string) => void;
+  /** Narrative file names present on disk, from the API. */
+  availableNarratives: readonly string[];
+  /** Fired when a save writes a new narrative file, so the owner can keep its list current. */
+  onNarrativeAdded: (narrativeName: string) => void;
   /** Called after an edit lands, so the owner can refetch. */
   onChanged: () => void;
 }
@@ -36,6 +40,8 @@ export function TimelineView({
   today,
   availableImages,
   onImageAdded,
+  availableNarratives,
+  onNarrativeAdded,
   onChanged
 }: Props) {
   const [surfaceRef, width] = useElementWidth<HTMLDivElement>();
@@ -73,6 +79,11 @@ export function TimelineView({
   const categories = useMemo(() => timeline.categories.map(toLayoutCategory), [timeline]);
 
   const availableImageNames = useMemo(() => new Set(availableImages), [availableImages]);
+
+  const availableNarrativeNames = useMemo(
+    () => new Set(availableNarratives),
+    [availableNarratives]
+  );
 
   const byId = useMemo(
     () => new Map(timeline.episodes.map(episode => [episode.episodeId, episode])),
@@ -163,6 +174,13 @@ export function TimelineView({
       ? detailEpisode.imageName
       : null;
 
+  // Same rule for the narrative: a name pointing at a file that is not there offers nothing
+  // to read, which is the same thing as never having had one.
+  const detailNarrativeName =
+    detailEpisode?.narrativeName && availableNarrativeNames.has(detailEpisode.narrativeName)
+      ? detailEpisode.narrativeName
+      : null;
+
   // Zooming is pure client-side recomputation. The original refetched from the server
   // on every zoom; the layout is a pure function, so there is nothing to fetch.
   const onZoom = (floor: DayNumber, ceiling: DayNumber) => {
@@ -239,7 +257,8 @@ export function TimelineView({
           // Resolved here rather than in the panel so a name pointing at nothing is
           // indistinguishable from no name by the time anything renders.
           imageName={detailImageName}
-
+          narrativeName={detailNarrativeName}
+          availableImages={availableImages}
           onClose={() => setSelected(null)}
           onZoom={onZoom}
           onEdit={episodeToEdit => {
@@ -256,6 +275,8 @@ export function TimelineView({
           today={today}
           availableImages={availableImages}
           onImageAdded={onImageAdded}
+          availableNarratives={availableNarratives}
+          onNarrativeAdded={onNarrativeAdded}
           onChanged={() => {
             setDialogMode(null);
             onChanged();

@@ -65,6 +65,11 @@ internal static class TransformerService
                 ImageName = ImageFileName.IsValid(occurrence.ImageName)
                     ? occurrence.ImageName
                     : string.Empty,
+                // Always empty: the workbook has no narrative column and never will. The
+                // spreadsheet is history (see docs/data-store.md), so re-running the importer
+                // against a live data file would blank every narrative reference along with
+                // everything else it has no column for.
+                NarrativeName = string.Empty,
                 EpisodeType = !occurrence.Indefinite && occurrence.StartDate == occurrence.EndDate
                     ? EpisodeType.Incident
                     : EpisodeType.Era,

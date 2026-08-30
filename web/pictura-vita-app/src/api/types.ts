@@ -45,6 +45,14 @@ export interface ApiEpisode {
    * question, answered by `GET /timeline/{id}/images`.
    */
   imageName: string;
+  /**
+   * File name of the episode's narrative — its long-form Markdown account; empty for none,
+   * null in files written before narratives existed.
+   *
+   * As with `imageName`, only the name is stored. What is in the file, and whether there is
+   * a file at all, are separate questions answered by `GET /timeline/{id}/narrative(s)`.
+   */
+  narrativeName: string;
   episodeType: number;
   startPrecision: number;
   /** yyyy-MM-dd */
@@ -128,6 +136,7 @@ export interface InsertEpisodeRequest {
   url: string;
   urlDescription: string;
   imageName: string;
+  narrativeName: string;
   startPrecision: number;
   start: string;
   endPrecision: number;

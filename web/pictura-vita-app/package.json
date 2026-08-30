@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "lucide-react": "^1.37.0",
+    "markdown-it": "^14.3.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

@@ -3,6 +3,7 @@ import { EpisodeType, type ApiEpisode } from '../api/types';
 import { imageUrl } from '../api/client';
 import { toIso, toDayNumber, daySpan, type DayNumber, type TimeItem } from '../layout';
 import { describeAge, describeGap, gapLabel, type Lifespan } from './elapsed';
+import { NarrativeReader } from './NarrativeReader';
 
 /** Position and size of the clicked item, relative to the timeline container. */
 export interface Anchor {
@@ -31,6 +32,18 @@ interface Props {
    * exactly like an episode that never had one.
    */
   imageName: string | null;
+  /**
+   * Narrative to offer, already checked against what exists on disk. Null shows no "Read
+   * narrative" button at all, so an episode whose file is missing looks exactly like one
+   * that never had a narrative — the same rule `imageName` follows.
+   */
+  narrativeName: string | null;
+  /**
+   * Every image file name present on disk, not just this episode's. A narrative can refer to
+   * any picture in the folder, so the reader needs the whole listing to know which ones to
+   * draw.
+   */
+  availableImages: readonly string[];
   onClose: () => void;
   onZoom: (start: number, end: number) => void;
   onEdit: (episode: ApiEpisode) => void;
@@ -57,12 +70,15 @@ export function DetailPanel({
   life,
   timelineId,
   imageName,
+  narrativeName,
+  availableImages,
   onClose,
   onZoom,
   onEdit
 }: Props) {
   const panel = useRef<HTMLElement>(null);
   const [showingFullSize, setShowingFullSize] = useState(false);
+  const [reading, setReading] = useState(false);
 
   // Hidden for the first paint so the panel is never seen at its pre-measurement position.
   const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
@@ -87,13 +103,15 @@ export function DetailPanel({
       left: `${left}px`,
       top: `${fitsAbove ? above : anchor.y + anchor.height + GAP}px`
     });
-  }, [anchor, containerWidth, episode, imageName]);
+  }, [anchor, containerWidth, episode, imageName, narrativeName]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      // Escape closes the full-size view first, then the panel: closing both at once would
+      // Escape closes what is on top first, then the panel: closing both at once would
       // dismiss the thing the reader was looking at *and* the thing they got to it from.
+      // The reader has its own Escape handler, so only the full-size view is unwound here.
+      if (reading) return;
       if (showingFullSize) setShowingFullSize(false);
       else onClose();
     };
@@ -112,7 +130,7 @@ export function DetailPanel({
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [onClose, showingFullSize]);
+  }, [onClose, showingFullSize, reading]);
 
   const body = () => {
     if (!episode) {
@@ -225,6 +243,17 @@ export function DetailPanel({
 
         {episode.description && <p className="description">{episode.description}</p>}
 
+        {/* The narrative is the long version, so it gets a way in rather than being poured
+            into a panel sized for a summary. Absent entirely when there is nothing to read,
+            which is the common case — most episodes are a date and a title. */}
+        {narrativeName && (
+          <p className="narrative-link">
+            <button type="button" className="link" onClick={() => setReading(true)}>
+              Read narrative →
+            </button>
+          </p>
+        )}
+
         {episode.url && (
           <p className="external">
             <a href={episode.url} target="_blank" rel="noreferrer noopener">
@@ -274,6 +303,18 @@ export function DetailPanel({
         >
           <img src={imageUrl(timelineId, imageName, 'full')} alt={episode?.title ?? item.title} />
         </div>
+      )}
+
+      {/* A sibling of the panel for the same reason as the lightbox: prose constrained to
+          the panel's corner of the page would be no easier to read than the panel. */}
+      {reading && narrativeName && (
+        <NarrativeReader
+          timelineId={timelineId}
+          narrativeName={narrativeName}
+          title={episode?.title ?? item.title}
+          availableImages={availableImages}
+          onClose={() => setReading(false)}
+        />
       )}
     </>
   );

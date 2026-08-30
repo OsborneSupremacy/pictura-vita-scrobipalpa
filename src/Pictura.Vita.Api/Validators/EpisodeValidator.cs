@@ -21,6 +21,20 @@ internal class EpisodeValidator : AbstractValidator<Episode>
             .WithMessage(
                 "ImageName must be a bare file name ending in "
                 + ".jpg, .jpeg, .png, .webp or .gif, or be empty for no image.");
+        // Empty means "no narrative"; anything else has to be a bare Markdown file name, for
+        // the same reason ImageName is checked here — a name that could escape the narrative
+        // root must not reach the store at all.
+        //
+        // NotNull() matches the `required string` on the domain model. JsonFlatFileDataStore
+        // reads through Newtonsoft, which ignores C#'s `required`, so null is representable
+        // at runtime whatever the type says; this is where that gap is closed. It closes it
+        // on the *write* path only — a hand-edited file, or an old backup restored, still
+        // deserializes a missing property as null and hands it to the client on GET, which is
+        // why the coercions in the client's adapter and dialogs are still load-bearing.
+        RuleFor(x => x.NarrativeName)
+            .NotNull()
+            .Must(name => string.IsNullOrEmpty(name) || NarrativeFileName.IsValid(name))
+            .WithMessage("NarrativeName must be a bare file name ending in .md, or be empty for no narrative.");
         RuleFor(x => x.StartPrecision).NotNull();
         RuleFor(x => x.Start).NotNull();
         RuleFor(x => x.EndPrecision).NotNull();

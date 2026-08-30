@@ -125,6 +125,8 @@ public class RandomTimelineProvider
             // Empty rather than a faked name: a generated timeline has no image directory, so
             // a name here would only ever resolve to nothing.
             .RuleFor(e => e.ImageName, string.Empty)
+            // Empty for the same reason: a generated timeline has no narrative directory.
+            .RuleFor(e => e.NarrativeName, string.Empty)
             .RuleFor(e => e.EpisodeType, EpisodeType.Incident)
             .RuleFor(e => e.StartPrecision, DatePrecision.Day)
             .RuleFor(e => e.EndPrecision, DatePrecision.Day)
