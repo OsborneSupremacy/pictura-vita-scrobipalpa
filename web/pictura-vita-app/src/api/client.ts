@@ -93,6 +93,42 @@ export function imageUrl(timelineId: string, name: string, size: 'thumb' | 'full
   );
 }
 
+/**
+ * Uploads a picture and returns the file name the timeline should record.
+ *
+ * The name comes back from the server rather than being chosen here: the API decodes and
+ * re-encodes the image (which is what strips EXIF, GPS included) and names the file after
+ * its content, so only the server knows what the stored file ends up being called.
+ *
+ * `stem` seeds the readable half of that name — the episode title makes a far better file
+ * name than "IMG_4471".
+ */
+export async function uploadImage(timelineId: string, file: File, stem: string): Promise<string> {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('stem', stem);
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}/timeline/${timelineId}/image`, { method: 'POST', body });
+  } catch {
+    throw new ApiUnreachableError();
+  }
+
+  if (response.ok) {
+    const created = (await response.json()) as { imageName: string };
+    return created.imageName;
+  }
+
+  // 413 comes from the server's outer body limit and carries no body of its own, so it needs
+  // a message written here; everything else explains itself.
+  if (response.status === 413) throw new Error('That image is far too large to upload.');
+
+  const problem = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(problem?.error ?? `Upload failed: ${response.status} ${response.statusText}`);
+}
+
 export const api = {
   timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
   timelines: () => get<ApiTimeline[]>('/timelines'),

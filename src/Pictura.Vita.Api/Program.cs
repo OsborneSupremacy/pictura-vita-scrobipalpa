@@ -1,4 +1,5 @@
 using dotenv.net;
+using Microsoft.AspNetCore.Http.Features;
 using Pictura.Vita.Api.Images;
 using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,19 @@ builder.Services.AddOpenApi();
 // by default. Without this every endpoint that resolves a validator fails at request time
 // with "No service for type ... has been registered".
 builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>(includeInternalTypes: true);
+
+// Two separate limits sit in front of the upload endpoint, and BOTH have to be raised or the
+// lower one answers first with a bare 413 and no explanation: Kestrel's request body size
+// (30MB by default) and the multipart form length. Each is set above the application's own
+// limit on purpose, so an over-large image reaches the check in the endpoint, which can say
+// how big it was and what the limit is. Past this outer bound a 413 is the honest answer.
+var uploadHardLimitBytes = ImageStore.MaxUploadBytes * 2;
+
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = uploadHardLimitBytes);
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = uploadHardLimitBytes;
+});
 
 var app = builder.Build();
 
@@ -132,6 +146,46 @@ app.MapGet("/timeline/{id:guid}/images", ([FromRoute]Guid id) =>
         Results.Ok(imageStore.List(id)))
     .WithDisplayName("Get the image file names present for a timeline")
     .Produces<IEnumerable<string>>();
+
+app.MapPost("/timeline/{id:guid}/image", async (
+        [FromRoute]Guid id,
+        HttpRequest request) =>
+    {
+        if (!request.HasFormContentType)
+            return Results.BadRequest(new { error = "Send the image as multipart/form-data." });
+
+        var form = await request.ReadFormAsync();
+        var file = form.Files["file"];
+
+        if (file is null || file.Length == 0)
+            return Results.BadRequest(new { error = "No file was attached." });
+
+        if (file.Length > ImageStore.MaxUploadBytes)
+            return Results.BadRequest(new
+            {
+                error = $"That image is {file.Length / (1024 * 1024)} MB; the limit is "
+                        + $"{ImageStore.MaxUploadBytes / (1024 * 1024)} MB."
+            });
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer);
+
+        // The episode title makes a far more useful file name than "IMG_4471", so the client
+        // sends it. It only seeds the slug — the name is generated either way.
+        var stem = form["stem"].ToString() is { Length: > 0 } supplied
+            ? supplied
+            : Path.GetFileNameWithoutExtension(file.FileName);
+
+        var saved = imageStore.Save(id, buffer.ToArray(), stem, app.Logger);
+
+        return saved.IsSuccess
+            ? Results.Created($"/timeline/{id}/image/{saved.Value}", new { imageName = saved.Value })
+            : Results.BadRequest(new { error = saved.Exception.Message });
+    })
+    .WithDisplayName("Upload an episode image")
+    .DisableAntiforgery()
+    .Produces(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest);
 
 app.MapGet("/timeline/{id:guid}/image/{name}", (
         [FromRoute]Guid id,
@@ -306,8 +360,9 @@ app.MapDelete("/episode/{id:guid}", async ([FromRoute]Guid id) =>
     .Produces(StatusCodes.Status404NotFound);
 
 app.Logger.LogInformation(
-    "Image root: {Root}",
-    imageStore.Root ?? "(none found — episodes will draw without images)");
+    "Image root: {Root}{Note}",
+    imageStore.Root,
+    imageStore.RootExists ? string.Empty : " (does not exist yet; the first upload creates it)");
 
 app.Run();
 

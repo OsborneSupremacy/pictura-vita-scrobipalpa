@@ -6,5 +6,6 @@
   <Project Path="Pictura.Vita.Domain/Pictura.Vita.Domain.csproj" />
   <Project Path="Pictura.Vita.Excel.Importer/Pictura.Vita.Excel.Importer.csproj" />
   <Project Path="Pictura.Vita.Messaging/Pictura.Vita.Messaging.csproj" />
+  <Project Path="Pictura.Vita.Utility.Tests/Pictura.Vita.Utility.Tests.csproj" />
   <Project Path="Pictura.Vita.Utility/Pictura.Vita.Utility.csproj" />
 </Solution>

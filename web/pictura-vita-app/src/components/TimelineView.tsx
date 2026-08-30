@@ -25,11 +25,19 @@ interface Props {
   today: DayNumber;
   /** Image file names present on disk, from the API. */
   availableImages: readonly string[];
+  /** Fired when an upload adds a file, so the owner can keep its list current. */
+  onImageAdded: (imageName: string) => void;
   /** Called after an edit lands, so the owner can refetch. */
   onChanged: () => void;
 }
 
-export function TimelineView({ timeline, today, availableImages, onChanged }: Props) {
+export function TimelineView({
+  timeline,
+  today,
+  availableImages,
+  onImageAdded,
+  onChanged
+}: Props) {
   const [surfaceRef, width] = useElementWidth<HTMLDivElement>();
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<{ floor: DayNumber; ceiling: DayNumber } | null>(null);
@@ -247,6 +255,7 @@ export function TimelineView({ timeline, today, availableImages, onChanged }: Pr
           mode={dialogMode}
           today={today}
           availableImages={availableImages}
+          onImageAdded={onImageAdded}
           onChanged={() => {
             setDialogMode(null);
             onChanged();

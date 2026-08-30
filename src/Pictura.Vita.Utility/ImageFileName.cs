@@ -1,3 +1,7 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Pictura.Vita.Utility;
 
 /// <summary>
@@ -40,6 +44,64 @@ public static class ImageFileName
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return false;
 
         return AllowedExtensions.Contains(Path.GetExtension(name));
+    }
+
+    /// <summary>
+    /// A file name for freshly uploaded content: a slug of <paramref name="preferredStem"/>
+    /// followed by a short digest of the bytes, for example "cornerstone-church-a3f19d.webp".
+    ///
+    /// The name is generated rather than taken from the upload, because a name supplied by a
+    /// client is the same untrusted input <see cref="IsValid"/> exists to defend against —
+    /// and on the write path an escape overwrites rather than merely discloses.
+    ///
+    /// The slug keeps the directory readable to whoever opens it in Finder, which is the
+    /// point of storing images as loose files at all. The digest makes the name a function of
+    /// the content: uploading the same picture twice lands on the same name instead of
+    /// accumulating copies, and two different pictures with the same title cannot collide.
+    /// </summary>
+    public static string Suggest(string? preferredStem, string extension, ReadOnlySpan<byte> content)
+    {
+        var slug = Slugify(preferredStem);
+        var digest = Convert.ToHexStringLower(SHA256.HashData(content))[..6];
+
+        return $"{slug}-{digest}{extension}";
+    }
+
+    /// <summary>
+    /// Reduces free text to lowercase ASCII words joined by hyphens. Anything that survives
+    /// is safe in a file name on every platform; anything else is dropped rather than
+    /// transliterated, since the slug is a convenience for reading the folder and the digest
+    /// is what actually distinguishes one file from another.
+    /// </summary>
+    private static string Slugify(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return "image";
+
+        var builder = new StringBuilder(text.Length);
+        var pendingHyphen = false;
+
+        foreach (var character in text.Normalize(NormalizationForm.FormD))
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+                continue;
+
+            if (char.IsAsciiLetterOrDigit(character))
+            {
+                if (pendingHyphen && builder.Length > 0) builder.Append('-');
+                pendingHyphen = false;
+                builder.Append(char.ToLowerInvariant(character));
+
+                // Long enough to stay recognisable, short enough that the digest and
+                // extension are still visible in a Finder column.
+                if (builder.Length == 48) break;
+            }
+            else
+            {
+                pendingHyphen = true;
+            }
+        }
+
+        return builder.Length == 0 ? "image" : builder.ToString();
     }
 
     /// <summary>

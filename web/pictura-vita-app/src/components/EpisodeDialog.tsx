@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { api } from '../api/client';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { api, imageUrl, uploadImage } from '../api/client';
 import { Confidentiality, type ApiEpisode, type ApiTimeline } from '../api/types';
 import { MAX_DATE_ISO, toIso, type DayNumber } from '../layout';
 
@@ -20,6 +20,8 @@ interface Props {
    * afterwards and the episode is still worth saving either way.
    */
   availableImages: readonly string[];
+  /** Fired when an upload adds a file, so the owner can keep its list current. */
+  onImageAdded: (imageName: string) => void;
   today: DayNumber;
   /** Fired after the episode is saved or deleted, so the owner can refetch. */
   onChanged: () => void;
@@ -97,12 +99,17 @@ function describeImageName(
 ): { text: string; bad: boolean } {
   const trimmed = name.trim();
 
-  if (!trimmed) return { text: 'File name only, from your timeline\u2019s images folder.', bad: false };
+  if (!trimmed) {
+    return {
+      text: 'Drop a picture, paste one, or choose a file. Location data is stripped on upload.',
+      bad: false
+    };
+  }
 
-  if (available.includes(trimmed)) return { text: 'Found.', bad: false };
+  if (available.includes(trimmed)) return { text: 'Found in your images folder.', bad: false };
 
   return {
-    text: 'No file of that name is in the images folder yet \u2014 the episode will draw without one.',
+    text: 'No file of that name is in the images folder \u2014 the episode will draw without one.',
     bad: true
   };
 }
@@ -121,6 +128,7 @@ export function EpisodeDialog({
   mode,
   today,
   availableImages,
+  onImageAdded,
   onChanged,
   onClose
 }: Props) {
@@ -130,11 +138,72 @@ export function EpisodeDialog({
   const [error, setError] = useState<string | null>(null);
   // Deleting is irreversible, so it takes a second, deliberate click.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const filePicker = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [draggingOver, setDraggingOver] = useState(false);
 
   useEffect(() => {
     const element = dialog.current;
     if (element && !element.open) element.showModal();
   }, []);
+
+  /**
+   * Sends one picture and points the episode at whatever the server called it.
+   *
+   * The title seeds the file name, so an episode gets "cornerstone-church-a3f19d.webp"
+   * rather than whatever the camera called it. Falls back to the file's own name for an
+   * episode being added before it has been titled.
+   */
+  const upload = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const stem = draft.title.trim() || file.name.replace(/\.[^.]+$/, '');
+      const stored = await uploadImage(timeline.timelineId, file, stem);
+
+      setDraft(current => ({ ...current, imageName: stored }));
+      // Tell the owner before the hint below is re-evaluated, or a file that was just
+      // uploaded reads as missing.
+      onImageAdded(stored);
+    } catch (problem: unknown) {
+      setUploadError(problem instanceof Error ? problem.message : String(problem));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadFirstImage = (files: FileList | null | undefined) => {
+    // One image per episode, so extra files in a multi-file drop are ignored rather than
+    // silently replacing each other.
+    const file = [...(files ?? [])].find(candidate => candidate.type.startsWith('image/'));
+    if (file) void upload(file);
+  };
+
+  useEffect(() => {
+    const element = dialog.current;
+    if (!element) return;
+
+    // Pasting is the shortest path from "I copied this picture" to a stored file, and it is
+    // also the only one that works for an image copied out of a web page: the bytes come
+    // through the clipboard, so nothing has to fetch anything.
+    const onPaste = (event: ClipboardEvent) => {
+      const file = [...(event.clipboardData?.files ?? [])].find(f => f.type.startsWith('image/'));
+      if (!file) return;
+      event.preventDefault();
+      void upload(file);
+    };
+
+    element.addEventListener('paste', onPaste);
+    return () => element.removeEventListener('paste', onPaste);
+  });
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDraggingOver(false);
+    uploadFirstImage(event.dataTransfer.files);
+  };
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft(current => ({ ...current, [key]: value }));
@@ -213,6 +282,12 @@ export function EpisodeDialog({
   const sortedCategories = [...timeline.categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const imageHint = describeImageName(draft.imageName, availableImages);
+
+  // Only for a name that actually resolves; a half-typed one would 404 on every keystroke.
+  const preview =
+    draft.imageName && availableImages.includes(draft.imageName)
+      ? imageUrl(timeline.timelineId, draft.imageName, 'thumb')
+      : null;
 
   return (
     <dialog ref={dialog} className="info-dialog episode-dialog" onClose={onClose} onCancel={onClose}>
@@ -299,21 +374,76 @@ export function EpisodeDialog({
             />
           </label>
 
-          <label>
-            Image
-            <input
-              value={draft.imageName}
-              list="episode-image-names"
-              placeholder="kalamazoo-house.jpg"
-              onChange={e => set('imageName', e.target.value)}
-            />
-            <datalist id="episode-image-names">
-              {availableImages.map(name => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-            <small className={imageHint.bad ? 'bad' : 'muted'}>{imageHint.text}</small>
-          </label>
+          <div className="episode-image">
+            <span className="field-label">Image</span>
+
+            <div
+              className={`image-drop${draggingOver ? ' dragging' : ''}`}
+              onDragOver={event => {
+                event.preventDefault();
+                setDraggingOver(true);
+              }}
+              onDragLeave={() => setDraggingOver(false)}
+              onDrop={onDrop}
+            >
+              {preview && (
+                <img
+                  className="image-preview"
+                  src={preview}
+                  alt=""
+                  // The file can be deleted from the folder while the dialog is open; an
+                  // empty frame is worse than none.
+                  onError={event => event.currentTarget.remove()}
+                />
+              )}
+
+              <div className="image-fields">
+                <input
+                  value={draft.imageName}
+                  list="episode-image-names"
+                  placeholder="Drop a picture here, or type a file name"
+                  onChange={e => set('imageName', e.target.value)}
+                />
+                <datalist id="episode-image-names">
+                  {availableImages.map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+
+                <div className="image-actions">
+                  <button
+                    type="button"
+                    onClick={() => filePicker.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? 'Uploading…' : 'Choose file…'}
+                  </button>
+
+                  {draft.imageName && !uploading && (
+                    <button type="button" className="link" onClick={() => set('imageName', '')}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={filePicker}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  hidden
+                  onChange={event => {
+                    uploadFirstImage(event.target.files);
+                    // Cleared so choosing the same file twice fires a change event again.
+                    event.target.value = '';
+                  }}
+                />
+              </div>
+            </div>
+
+            <small className={uploadError ?? imageHint.bad ? 'bad' : 'muted'}>
+              {uploadError ?? imageHint.text}
+            </small>
+          </div>
         </div>
 
         <fieldset className="episode-categories">

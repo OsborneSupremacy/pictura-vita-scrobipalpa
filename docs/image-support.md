@@ -14,8 +14,8 @@ images — is one directory you can move, back up, or hand to someone.
   data.xlsx                        the original spreadsheet, kept for reference only
   images/
     {timelineId}/
-      kalamazoo-house.jpg          originals only — you put files here, that's it
-      first-day-at-acme.png
+      cornerstone-church-a3f19d.webp   written by the app on upload
+      kalamazoo-house.jpg              or dropped in by hand; both work
 ```
 
 Thumbnails are **not** stored here. They are derived data, generated on first request into a
@@ -44,6 +44,42 @@ Missing root, missing timeline folder, and missing file are all the same non-eve
 Unlike `DATA_FILE_PATH`, a missing image root does **not** fail startup — images are
 optional, and a timeline with none is a normal timeline.
 
+## Uploading
+
+`POST /timeline/{timelineId}/image`, multipart, fields `file` and `stem`.
+
+The bytes are **decoded and re-encoded, never copied through**. That is what strips EXIF, and
+EXIF is the reason to bother: a phone writes GPS coordinates into every photo, so a picture of
+somewhere you lived carries that address in its metadata. It would otherwise ride along inside
+any timeline folder that got copied, backed up or handed to someone — precisely the data this
+application keeps off the network in the first place. Re-encoding drops all of it.
+
+The orientation tag has to be *applied* before it is discarded, or every portrait phone photo
+comes out on its side. `ImageStore.Upright` does that for all eight EXIF orientations.
+
+Re-encoding also settles what a file actually is: the decoder decides, not the extension and
+not the content type the client claimed. Everything is normalised to WebP, capped at 2560px on
+the longest edge — far more than the full-size view can show, and small enough that the folder
+stays copyable.
+
+**The name is generated, never taken from the upload.** A client-supplied name is the same
+untrusted input the read path defends against, and on the write path an escape overwrites
+rather than merely discloses. It is a slug of the episode title plus six hex of the content
+digest — `cornerstone-church-a3f19d.webp` — so the folder stays readable in Finder, uploading
+the same picture twice is a no-op rather than a second copy, and two pictures sharing a title
+cannot collide.
+
+Two size limits sit in front of the endpoint and both have to be raised together, or the lower
+one answers first with a bare 413: Kestrel's `MaxRequestBodySize` and the multipart form
+length. Both are set to twice the application's own 25MB limit, so an over-large image reaches
+the check that can say how big it was.
+
+There is deliberately **no fetch-from-URL**. It would make the API issue requests to addresses
+a page supplied — reaching whatever is on the loopback interface and the local network — and
+it would be the first outbound connection in a design whose whole premise is that nothing
+leaves the machine. Drag-and-drop and paste both deliver real bytes with nothing to fetch, and
+between them they cover the cases that matter.
+
 ## Serving
 
 `GET /timeline/{timelineId}/image/{name}?size=thumb|full`
@@ -61,6 +97,16 @@ Validation, in order — any failure is a 404, never a 400, so probing tells you
 
 Responses carry `Last-Modified` from the file's mtime and honour `If-Modified-Since`, so a
 re-render does not re-fetch every visible thumbnail.
+
+Reading is kept separate from decoding so that "the bytes could not be fetched" is told apart
+from "the bytes are not a picture". This matters because the data directory lives in iCloud
+Drive with Optimise Mac Storage on. Current macOS does not evict to `.icloud` placeholder
+files — it leaves the file in place, full-sized and *dataless*, materialising on read — so
+listing and existence checks stay correct and an evicted image simply costs a pause on first
+view. What it must not do is what it used to: treat an unreadable source as a cache failure
+and fall back to streaming the original, which failed again *after* the response had started
+and truncated the body. An unreadable file is now an honest 404 and a log line that names the
+likely cause.
 
 `GET /timeline/{timelineId}/images` returns the names actually present on disk. The client
 fetches it alongside the timeline, so the renderer knows availability *before* layout — no

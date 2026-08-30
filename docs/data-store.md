@@ -48,5 +48,7 @@ costs nothing where the column is absent — a blank cell reads as "no image".
 ## Editing
 
 Episodes, categories and timeline info are edited in the app, through the API, which writes
-the JSON file in place. Images are the exception: the file names are edited in the app, but
-the picture files themselves are copied into the image directory by hand.
+the JSON file in place. Images too: dropping, pasting or choosing a picture in the episode
+dialog uploads it, and the API re-encodes it (stripping EXIF), names it and writes it into the
+image directory. Copying files in by hand still works — the store holds a name, and it does
+not care who put the file there.

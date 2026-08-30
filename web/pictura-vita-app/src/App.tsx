@@ -49,6 +49,14 @@ export default function App() {
       .catch((problem: unknown) => setError(problem instanceof Error ? problem.message : String(problem)));
   }, []);
 
+  /**
+   * An upload adds a file to a directory the client cannot list for itself, so the server's
+   * answer is folded into the existing list rather than triggering a refetch of everything.
+   */
+  const addAvailableImage = (imageName: string) =>
+    setAvailableImages(current =>
+      current.includes(imageName) ? current : [...current, imageName].sort());
+
   const select = async (id: string) => {
     setError(null);
     try {
@@ -129,6 +137,7 @@ export default function App() {
             timeline={timeline}
             today={today}
             availableImages={availableImages}
+            onImageAdded={addAvailableImage}
             onChanged={() => void select(timeline.timelineId)}
           />
         </>
