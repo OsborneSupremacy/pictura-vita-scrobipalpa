@@ -21,6 +21,20 @@ builder.Services.AddOpenApi();
 // with "No service for type ... has been registered".
 builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>(includeInternalTypes: true);
 
+// Make the type system mean what it says at the HTTP boundary. Without this, System.Text.Json
+// happily writes a JSON null into a non-nullable `required string`, and the first thing to
+// notice is a validator several layers down — or nothing at all, if no validator covers that
+// property. With it, a request body carrying null for a non-nullable property is rejected as
+// it is read.
+//
+// Scope worth knowing: this reaches only the API's own reading and writing of JSON. The data
+// file is read and written by JsonFlatFileDataStore, which uses Newtonsoft.Json, and is not
+// affected by any System.Text.Json setting — nulls already sitting in a file still load.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.RespectNullableAnnotations = true;
+});
+
 // Two separate limits sit in front of the upload endpoint, and BOTH have to be raised or the
 // lower one answers first with a bare 413 and no explanation: Kestrel's request body size
 // (30MB by default) and the multipart form length. Each is set above the application's own
