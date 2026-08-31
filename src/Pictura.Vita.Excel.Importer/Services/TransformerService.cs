@@ -35,6 +35,8 @@ internal static class TransformerService
                     $"category|{timelineId}|{group}"),
                 Title = group,
                 Subtitle = string.Empty,
+                // The spreadsheet has no column for it either; it is written in the app.
+                Description = string.Empty,
                 Confidentiality = Confidentiality.OnlyMe,
                 SortOrder = index,
                 // The spreadsheet carries neither; both are chosen in the app.

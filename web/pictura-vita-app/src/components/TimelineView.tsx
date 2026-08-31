@@ -16,6 +16,7 @@ import {
 import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
 import { Band } from './Band';
+import { CategoryDescriptionDialog } from './CategoryDescriptionDialog';
 import { DetailPanel, type Anchor } from './DetailPanel';
 import type { Lifespan } from './elapsed';
 import { EpisodeDialog, type EpisodeDialogMode } from './EpisodeDialog';
@@ -57,6 +58,8 @@ export function TimelineView({
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
   const [dialogMode, setDialogMode] = useState<EpisodeDialogMode | null>(null);
+  /** Id of the category whose description is being edited; null when the dialog is shut. */
+  const [describing, setDescribing] = useState<string | null>(null);
   const [zoomDialogOpen, setZoomDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
@@ -251,6 +254,7 @@ export function TimelineView({
                 selectedKey={selected?.item.key ?? null}
                 onSelect={select}
                 onAdd={categoryId => setDialogMode({ kind: 'add', categoryIds: [categoryId] })}
+                onEditDescription={setDescribing}
               />
             ))}
             <AxisRow increments={layout.axis} onZoom={onZoom} />
@@ -334,6 +338,23 @@ export function TimelineView({
           onClose={() => setDialogMode(null)}
         />
       )}
+
+      {/* Looked up by id rather than held in state, so the dialog cannot go on showing a
+          copy of the category that a refetch has already replaced. */}
+      {describing && (() => {
+        const category = timeline.categories.find(c => c.categoryId === describing);
+        return category ? (
+          <CategoryDescriptionDialog
+            timelineId={timeline.timelineId}
+            category={category}
+            onSaved={() => {
+              setDescribing(null);
+              onChanged();
+            }}
+            onClose={() => setDescribing(null)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

@@ -174,6 +174,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Confidentiality = Confidentiality.Public,
             Title = "Test Category",
             Subtitle = "Test Subtitle",
+            Description = "Test Description",
             SortOrder = 0,
             Icon = "star",
             Color = "#1e5799"
@@ -244,6 +245,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             TimelineId = timeline.TimelineId,
             Title = "Persisted",
             Subtitle = string.Empty,
+            Description = string.Empty,
             Confidentiality = Confidentiality.Public,
             SortOrder = 99,
             Icon = "briefcase",

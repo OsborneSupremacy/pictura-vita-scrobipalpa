@@ -19,6 +19,7 @@ const category = (
 ): LayoutCategory => ({
   categoryId: id,
   title: id,
+  description: '',
   icon: '',
   color: '',
   sortOrder,

@@ -7,6 +7,10 @@ internal class CategoryValidator : AbstractValidator<Category>
         RuleFor(x => x.CategoryId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty();
         RuleFor(x => x.Subtitle).NotNull();
+        RuleFor(x => x.Description).NotNull();
+        RuleFor(x => x.Description)
+            .MaximumLength(Category.MaxDescriptionLength)
+            .WithMessage($"A description is limited to {Category.MaxDescriptionLength} characters.");
         RuleFor(x => x.Confidentiality).NotNull();
         RuleFor(x => x.Confidentiality)
             .NotEqual(Confidentiality.Inherit)

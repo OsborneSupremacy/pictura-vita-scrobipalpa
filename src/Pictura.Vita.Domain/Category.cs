@@ -2,11 +2,25 @@ namespace Pictura.Vita.Domain;
 
 public record Category
 {
+    /// <summary>
+    /// Longest description accepted, in characters. A description is a paragraph of context
+    /// for the band, not an essay — an episode's long-form account is a narrative file. The
+    /// limit lives here so the validator and the data agree on one number.
+    /// </summary>
+    public const int MaxDescriptionLength = 500;
+
     public required Guid CategoryId { get; init; }
 
     public required string Title { get; init; }
 
     public required string Subtitle { get; init; }
+
+    /// <summary>
+    /// A paragraph shown under the category's name on the timeline, saying what the band
+    /// covers. Empty for none, never null — see docs/data-store.md on keeping the data in
+    /// shape rather than reaching for nullable properties.
+    /// </summary>
+    public required string Description { get; init; }
 
     public required Confidentiality Confidentiality { get; init; }
 

@@ -40,6 +40,7 @@ export function toLayoutCategory(category: ApiCategory): LayoutCategory {
   return {
     categoryId: category.categoryId,
     title: category.title,
+    description: category.description,
     // Null in data written before these existed; absent means "not chosen".
     icon: category.icon ?? '',
     color: category.color ?? '',

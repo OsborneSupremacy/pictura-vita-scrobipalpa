@@ -50,6 +50,8 @@ export interface LayoutEpisode {
 export interface LayoutCategory {
   categoryId: string;
   title: string;
+  /** Paragraph drawn under the band heading; empty for none. */
+  description: string;
   /** Icon name to draw beside the band heading; empty for none. */
   icon: string;
   /** Explicit band colour; empty to fall back to `colorIndex`. */
@@ -177,6 +179,8 @@ export interface Rail {
 export interface CategoryBand {
   categoryId: string;
   title: string;
+  /** Paragraph drawn under the band heading; empty for none. */
+  description: string;
   icon: string;
   /** Empty when the category has no colour of its own; use `colorIndex` then. */
   color: string;

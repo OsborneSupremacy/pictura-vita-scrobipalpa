@@ -79,6 +79,33 @@ main { padding: 16px 20px 40px; }
   background: var(--surface);
 }
 
+/* Sits inboard of the add button, sharing its geometry so the two read as one pair. */
+.band-edit {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.band-edit:hover {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+}
+
 .toolbar .add-episode {
   padding: 4px 12px;
   font: inherit;
@@ -372,6 +399,20 @@ main { padding: 16px 20px 40px; }
 
 .category-rows > li { padding: 4px 0; border-bottom: 1px solid var(--page); }
 .category-rows > li.marked { opacity: 0.65; }
+
+.category-description-input {
+  width: 100%;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* Right-aligned under the textarea, where a character count is looked for. */
+.counter {
+  margin: 4px 0 0;
+  text-align: right;
+  font-size: 12px;
+}
 
 .category-row {
   display: grid;
@@ -925,6 +966,24 @@ main { padding: 16px 20px 40px; }
 /* ---- Bands ---- */
 
 .band { padding: 0 0 10px; }
+
+/* Lower case and un-tracked, against the heading's uppercase letter-spacing: this is prose
+   and has to read as prose, not as a second heading. Centred to sit under the title, and
+   held to a measure so a 500-character paragraph does not run the full width of a wide
+   timeline as one unreadable line. */
+.band-description {
+  margin: 0;
+  padding: 6px 40px 7px;
+  max-width: 78ch;
+  margin-inline: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  white-space: pre-wrap;
+}
 
 .band-title {
   position: relative;

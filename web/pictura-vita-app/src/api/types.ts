@@ -17,10 +17,19 @@ export const SubjectType = {
   Organization: 1
 } as const;
 
+/**
+ * Longest category description the API will accept. Mirrors
+ * `Category.MaxDescriptionLength` in the domain — the server is the one that enforces it;
+ * this copy exists so the dialog can say so before a round trip.
+ */
+export const MAX_CATEGORY_DESCRIPTION = 500;
+
 export interface ApiCategory {
   categoryId: string;
   title: string;
   subtitle: string;
+  /** Paragraph shown under the band's name. Empty for none; never null. */
+  description: string;
   confidentiality: number;
   sortOrder: number;
   /** Lucide kebab-case name; empty for none. Null in files written before icons existed. */
@@ -116,6 +125,7 @@ export interface InsertCategoryRequest {
   timelineId: string;
   title: string;
   subtitle: string;
+  description: string;
   confidentiality: number;
   sortOrder: number;
   icon: string;

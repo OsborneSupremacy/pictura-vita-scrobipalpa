@@ -40,6 +40,7 @@ public class RandomTimelineProvider
                 CategoryId = Guid.CreateVersion7(),
                 Title = name,
                 Subtitle = _faker.Lorem.Sentence(3),
+                Description = _faker.Lorem.Paragraph(),
                 Confidentiality = _randomizer.Enum<Confidentiality>(),
                 SortOrder = index,
                 Icon = string.Empty,

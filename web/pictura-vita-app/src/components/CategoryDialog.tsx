@@ -20,6 +20,12 @@ interface Row {
   categoryId: string;
   title: string;
   subtitle: string;
+  /**
+   * Not edited here — it has its own dialog, opened from the band heading. It is still
+   * carried through every save, because an update sends the whole category and leaving it
+   * out would blank the description of every category on the timeline.
+   */
+  description: string;
   confidentiality: number;
   sortOrder: number;
   icon: string;
@@ -79,6 +85,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
         categoryId: '',
         title: '',
         subtitle: '',
+        description: '',
         confidentiality: Confidentiality.OnlyMe,
         // Superseded on save by the row's position; only a placeholder until then.
         sortOrder: current.length,
@@ -140,6 +147,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
             timelineId: timeline.timelineId,
             title: row.title.trim(),
             subtitle: row.subtitle,
+            description: row.description,
             confidentiality: row.confidentiality,
             sortOrder,
             icon: row.icon,
@@ -153,6 +161,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
           before &&
           (before.title !== row.title.trim() ||
             before.subtitle !== row.subtitle ||
+            before.description !== row.description ||
             before.confidentiality !== row.confidentiality ||
             (before.icon ?? '') !== row.icon ||
             (before.color ?? '') !== row.color ||
@@ -165,6 +174,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
               categoryId: row.categoryId,
               title: row.title.trim(),
               subtitle: row.subtitle,
+              description: row.description,
               confidentiality: row.confidentiality,
               sortOrder,
               icon: row.icon,

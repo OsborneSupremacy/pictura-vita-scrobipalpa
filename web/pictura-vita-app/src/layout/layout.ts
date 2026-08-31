@@ -384,6 +384,7 @@ function buildBand(
   return {
     categoryId: category.categoryId,
     title: category.title,
+    description: category.description,
     icon: category.icon,
     color: category.color,
     colorIndex,

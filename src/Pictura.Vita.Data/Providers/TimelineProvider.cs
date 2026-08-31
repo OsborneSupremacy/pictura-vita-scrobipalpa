@@ -130,6 +130,7 @@ public class TimelineProvider
             Confidentiality = request.Confidentiality,
             Title = request.Title,
             Subtitle = request.Subtitle,
+            Description = request.Description,
             SortOrder = request.SortOrder,
             Icon = request.Icon,
             Color = request.Color
@@ -160,6 +161,7 @@ public class TimelineProvider
             Confidentiality = request.Category.Confidentiality,
             Title = request.Category.Title,
             Subtitle = request.Category.Subtitle,
+            Description = request.Category.Description,
             SortOrder = request.Category.SortOrder,
             Icon = request.Category.Icon,
             Color = request.Category.Color

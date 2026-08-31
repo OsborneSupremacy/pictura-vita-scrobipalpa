@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { Pencil } from 'lucide-react';
 import type { CategoryBand, Rail, TimeItem } from '../layout';
 import { CategoryIcon } from '../icons/CategoryIcon';
 import { imageUrl } from '../api/client';
@@ -11,6 +12,7 @@ interface Props {
   selectedKey: string | null;
   onSelect: (item: TimeItem, element: HTMLElement) => void;
   onAdd: (categoryId: string) => void;
+  onEditDescription: (categoryId: string) => void;
 }
 
 function itemClassName(item: TimeItem, selected: boolean): string {
@@ -152,7 +154,7 @@ function RailRow({
   );
 }
 
-export function Band({ band, timelineId, selectedKey, onSelect, onAdd }: Props) {
+export function Band({ band, timelineId, selectedKey, onSelect, onAdd, onEditDescription }: Props) {
   // A stored colour wins; otherwise the band falls back to its position, as before.
   const { gradient, text } = barStyle(band.color || fallbackColor(band.colorIndex));
 
@@ -168,6 +170,15 @@ export function Band({ band, timelineId, selectedKey, onSelect, onAdd }: Props) 
         {band.title}
         <button
           type="button"
+          className="band-edit"
+          title={`Edit the description of ${band.title}`}
+          aria-label={`Edit the description of ${band.title}`}
+          onClick={() => onEditDescription(band.categoryId)}
+        >
+          <Pencil size={13} strokeWidth={2} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
           className="band-add"
           title={`Add an episode to ${band.title}`}
           aria-label={`Add an episode to ${band.title}`}
@@ -176,6 +187,10 @@ export function Band({ band, timelineId, selectedKey, onSelect, onAdd }: Props) 
           +
         </button>
       </h2>
+
+      {/* Sits between the heading and the callouts so it reads as part of the heading
+          block rather than as a note attached to the first episode above the bars. */}
+      {band.description && <p className="band-description">{band.description}</p>}
 
       {band.incidentRailsAbove.map((rail, index, rails) => (
         <RailRow
