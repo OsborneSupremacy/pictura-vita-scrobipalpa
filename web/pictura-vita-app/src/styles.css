@@ -1377,3 +1377,60 @@ main { padding: 16px 20px 40px; }
 }
 
 .narrative-body .bad { color: #b91c1c; }
+
+/* ---- Export ---- */
+
+/* A width rather than a max-width: the preview column is the point of the panel, and a
+   dialog left to size itself to its content gives the fields their preferred width and the
+   picture whatever is left over. */
+.export-dialog { width: min(940px, calc(100vw - 32px)); }
+
+.export-body {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.export-fields { align-content: start; }
+
+.export-note,
+.export-warning {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.export-warning { padding: 7px 9px; border-radius: 4px; background: #fee2e2; }
+
+.export-fields > .export-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The preview is the whole point of the panel: it is the only place the absence of the
+   toolbar, the add buttons and the detail popover can actually be seen before the file is
+   written. Checkerboarded so a pale timeline still reads as an image with edges. */
+.export-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  max-height: 52vh;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--page);
+}
+
+.export-preview img {
+  max-width: 100%;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+}
+
+.export-size { font-variant-numeric: tabular-nums; }

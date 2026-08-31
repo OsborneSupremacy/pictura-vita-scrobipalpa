@@ -59,6 +59,15 @@ export function readableTextOn(stops: Rgb[]): string {
   return worstCase(WHITE) >= worstCase(BLACK) ? toHex(WHITE) : toHex(BLACK);
 }
 
+export interface BarStops {
+  /** Upper stop: the stored colour itself. */
+  from: string;
+  /** Lower stop, lifted towards white. */
+  to: string;
+  /** Label colour that stays legible against both stops. */
+  text: string;
+}
+
 export interface BarStyle {
   /** Top-to-bottom gradient, as the original had. */
   gradient: string;
@@ -93,11 +102,24 @@ export const MIN_READABLE_CONTRAST = 3;
  * rather than a rendering.
  */
 export function barStyle(color: string): BarStyle {
+  const { from, to, text } = barStops(color);
+  return { gradient: `linear-gradient(180deg, ${from}, ${to})`, text };
+}
+
+/**
+ * The same appearance as `barStyle`, given as the two stops rather than as a CSS gradient.
+ *
+ * The image export draws an SVG `<linearGradient>`, which needs the stops themselves; going
+ * through the CSS string and parsing it back would put a second definition of the same
+ * colours a regex apart from the first.
+ */
+export function barStops(color: string): BarStops {
   const base = parseHex(color) ?? { r: 76, g: 76, b: 76 };
   const lifted = lighten(base, GRADIENT_LIFT);
 
   return {
-    gradient: `linear-gradient(180deg, ${toHex(base)}, ${toHex(lifted)})`,
+    from: toHex(base),
+    to: toHex(lifted),
     text: readableTextOn([base, lifted])
   };
 }

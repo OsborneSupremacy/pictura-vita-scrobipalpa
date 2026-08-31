@@ -19,6 +19,7 @@ import { Band } from './Band';
 import { DetailPanel, type Anchor } from './DetailPanel';
 import type { Lifespan } from './elapsed';
 import { EpisodeDialog, type EpisodeDialogMode } from './EpisodeDialog';
+import { ExportDialog } from './ExportDialog';
 import { FilterControls } from './FilterControls';
 import { ZoomDialog } from './ZoomDialog';
 
@@ -57,6 +58,7 @@ export function TimelineView({
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
   const [dialogMode, setDialogMode] = useState<EpisodeDialogMode | null>(null);
   const [zoomDialogOpen, setZoomDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   // Anchor coordinates are taken relative to the timeline container rather than the
   // viewport, so the panel stays attached to its item as the page scrolls.
@@ -225,6 +227,10 @@ export function TimelineView({
             Reset zoom
           </button>
         )}
+
+        <button type="button" onClick={() => setExportDialogOpen(true)}>
+          Export…
+        </button>
       </div>
 
       <div className="surface" ref={surfaceRef}>
@@ -273,6 +279,23 @@ export function TimelineView({
             setSelected(null);
             setDialogMode({ kind: 'edit', episode: episodeToEdit });
           }}
+        />
+      )}
+
+      {exportDialogOpen && (
+        <ExportDialog
+          timelineId={timeline.timelineId}
+          title={timeline.timelineInfo.title}
+          subtitle={timeline.timelineInfo.subtitle}
+          episodes={episodes}
+          categories={categories}
+          bounds={bounds}
+          current={window}
+          // The category filter is the toolbar's; the export inherits it rather than
+          // offering a second copy of the same list to get out of step with.
+          hiddenCategoryIds={hiddenCategoryIds}
+          availableImages={availableImages}
+          onClose={() => setExportDialogOpen(false)}
         />
       )}
 
