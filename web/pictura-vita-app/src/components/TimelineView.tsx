@@ -10,7 +10,8 @@ import {
   toIso,
   type DayNumber,
   type ResolvedConfidentiality,
-  type TimeItem
+  type TimeItem,
+  type Window
 } from '../layout';
 import { useElementWidth } from '../hooks/useElementWidth';
 import { AxisRow } from './AxisRow';
@@ -19,6 +20,7 @@ import { DetailPanel, type Anchor } from './DetailPanel';
 import type { Lifespan } from './elapsed';
 import { EpisodeDialog, type EpisodeDialogMode } from './EpisodeDialog';
 import { FilterControls } from './FilterControls';
+import { ZoomDialog } from './ZoomDialog';
 
 interface Props {
   timeline: ApiTimeline;
@@ -54,6 +56,7 @@ export function TimelineView({
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<{ item: TimeItem; anchor: Anchor } | null>(null);
   const [dialogMode, setDialogMode] = useState<EpisodeDialogMode | null>(null);
+  const [zoomDialogOpen, setZoomDialogOpen] = useState(false);
 
   // Anchor coordinates are taken relative to the timeline container rather than the
   // viewport, so the panel stays attached to its item as the page scrolls.
@@ -94,15 +97,16 @@ export function TimelineView({
   // changes, and an ongoing timeline runs to today rather than to a date frozen at import.
   // Episodes outside the window are dropped by the layout, exactly as the original's
   // configurable floor and ceiling did.
-  const window = useMemo(() => {
-    if (zoom) return zoom;
-
+  const bounds = useMemo<Window>(() => {
     const { start, end, ongoing } = timeline.timelineInfo;
     return {
       floor: toDayNumber(start),
       ceiling: ongoing || end === MAX_DATE_ISO ? today : toDayNumber(end)
     };
-  }, [zoom, timeline, today]);
+  }, [timeline, today]);
+
+  // A zoom is a window inside those bounds; without one the whole timeline is drawn.
+  const window = zoom ?? bounds;
 
   // Only a person has an age, and only one with a birth date on file: the API writes
   // DateOnly.MinValue where none was given, which would otherwise date every episode from
@@ -212,6 +216,10 @@ export function TimelineView({
           onConfidentialityChange={setMaxConfidentiality}
         />
 
+        <button type="button" onClick={() => setZoomDialogOpen(true)}>
+          Zoom to dates…
+        </button>
+
         {zoom && (
           <button type="button" onClick={() => setZoom(null)}>
             Reset zoom
@@ -265,6 +273,25 @@ export function TimelineView({
             setSelected(null);
             setDialogMode({ kind: 'edit', episode: episodeToEdit });
           }}
+        />
+      )}
+
+      {zoomDialogOpen && (
+        <ZoomDialog
+          bounds={bounds}
+          current={window}
+          onApply={({ floor, ceiling }) => {
+            // Choosing the whole timeline is a reset, not a zoom to a window that happens
+            // to match it: leaving the zoom set would strand a "Reset zoom" that does nothing.
+            if (floor === bounds.floor && ceiling === bounds.ceiling) {
+              setZoom(null);
+              setSelected(null);
+            } else {
+              onZoom(floor, ceiling);
+            }
+            setZoomDialogOpen(false);
+          }}
+          onClose={() => setZoomDialogOpen(false)}
         />
       )}
 

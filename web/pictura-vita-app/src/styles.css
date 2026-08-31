@@ -551,6 +551,25 @@ main { padding: 16px 20px 40px; }
   background: var(--surface);
 }
 
+/* ---- Zoom to dates dialog ---- */
+
+/* Wide enough to keep the two bound dates on one line; a date broken across a line
+   break reads as two. */
+.zoom-dialog { width: min(400px, calc(100vw - 32px)); }
+
+.zoom-bounds {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sits opposite the buttons, as a running total of what the fields currently select. */
+.info-dialog footer .zoom-span {
+  align-self: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Icons ---- */
 
 .band-icon {
