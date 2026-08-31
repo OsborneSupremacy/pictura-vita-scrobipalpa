@@ -81,7 +81,37 @@ Prose is a file rather than a JSON field for reasons that are not the reasons im
 
 ## Running it
 
-**Two processes are required.** The dev server alone shows "Cannot reach the Pictura Vita API".
+**Two processes are required** either way. The dev server alone shows "Cannot reach the Pictura Vita API".
+
+### With Docker
+
+One command, and neither the .NET SDK nor Node has to be installed on the machine.
+
+```bash
+docker compose up --build
+```
+
+The app is then at <http://127.0.0.1:5173>, proxying `/api/*` to the API container; the API itself is at <http://127.0.0.1:5199>, with its Scalar reference at <http://127.0.0.1:5199/scalar/v1>. Both ports are published on loopback only — nothing here is reachable from the network, which is the same boundary the app draws when run directly.
+
+**Your timeline stays on your machine.** The container gets a directory, mounted read-write at `/data`, and nothing else: the JSON file, its `images/` and its `narratives/` all live there, and the API derives the last two from the first, so a timeline remains one portable folder rather than three separately configured paths. Nothing is copied into the image, and deleting every container and volume leaves the directory untouched.
+
+Point it at your own data by copying `.env.example` (the one beside `compose.yaml`, not the API's) to `.env`:
+
+```bash
+PICTURA_VITA_DATA_DIR=/path/to/my-timeline
+```
+
+Your real timeline is identity-grade data and belongs **outside** the working copy — see [Why the data never leaves the machine](#why-the-data-never-leaves-the-machine). The default, `./data`, is gitignored and is there for the sample:
+
+```bash
+cp src/Pictura.Vita.Data/test/sample-01.json data/timeline-data.json
+```
+
+The front-end container runs the Vite dev server against the bind-mounted source, so editing a file on the host still hot-reloads the browser. Editing back-end code does not: rebuild with `docker compose up --build api`.
+
+Two things are worth knowing. The published ports are the same ones a direct run uses, so Compose will refuse to start if `dotnet run` or `npm run dev` is already holding them — run one or the other, not both. And thumbnails are cached in a named Docker volume rather than in your data directory, so they survive a restart; `docker compose down -v` discards them and they are regenerated on demand.
+
+### Directly
 
 ```bash
 dotnet run --project src/Pictura.Vita.Api
@@ -91,26 +121,30 @@ dotnet run --project src/Pictura.Vita.Api
 npm --prefix web/pictura-vita-app run dev
 ```
 
-The app is then at <http://127.0.0.1:5173>, proxying `/api/*` to `http://localhost:5199`.
+Same addresses as above.
 
-Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `DATA_FILE_PATH`. Point it at the sample data in the build output to try it without any real data of your own. A missing or wrong path fails at startup with an explicit message rather than quietly serving an empty timeline. The API loads `.env` with `overwriteExistingVars: false`, so a value exported in your shell **wins** over the file — which is what makes `DATA_FILE_PATH=/tmp/scratch.json dotnet run …` a safe way to point a run at throwaway data without touching your `.env`.
+Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `DATA_FILE_PATH`. Point it at the sample data in the build output to try it without any real data of your own. A missing or wrong path fails at startup with an explicit message rather than quietly serving an empty timeline. The API loads `.env` with `overwriteExistingVars: false`, so a value exported in your shell **wins** over the file — which is what makes `DATA_FILE_PATH=/tmp/scratch.json dotnet run …` a safe way to point a run at throwaway data without touching your `.env`. That is also how Compose configures the container, which is why the API's `.env` is deliberately kept out of the image.
 
-Tests: `dotnet test src/Pictura.Vita.slnx` for the back end, `npm --prefix web/pictura-vita-app test` for the layout engine.
+Tests: `dotnet test src/Pictura.Vita.slnx` for the back end, `npm --prefix web/pictura-vita-app test` for the layout engine. Both run on the host; there is no container for them.
 
 ---
 
 ## Layout
 
 ```
+compose.yaml                      Both processes in containers (see "Running it")
+data/                             Default mount point for a timeline directory; gitignored
 src/                              .NET solution
   Pictura.Vita.Domain/            Episode, Category, Timeline, TimelineInfo, the enums
   Pictura.Vita.Domain.Extensions/ Derived values (duration, display names) kept off the storage records
   Pictura.Vita.Data/              JsonFlatFileDataStore provider; fabricated sample data
   Pictura.Vita.Api/               Minimal API, FluentValidation, image store and thumbnailer, narrative store
+    Dockerfile                    Built from src/, which is the whole reference closure
   Pictura.Vita.Messaging/         Insert/update request contracts
   Pictura.Vita.Excel.Importer/    One-off spreadsheet migration (see the warning above)
   Pictura.Vita.Utility/           Deterministic GUIDs, Result<T>, date helpers
 web/pictura-vita-app/             React + Vite front end
+  Dockerfile                      Runs the dev server against the bind-mounted source
   src/layout/                     The layout engine — pure, DOM-free, unit-tested
 docs/                             Design notes (see below)
 ```

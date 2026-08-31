@@ -14,7 +14,14 @@
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
         <PackageReference Include="SkiaSharp" Version="4.151.1" />
+        <!-- The thumbnailer needs Skia's native library for whatever it is running on, and
+             which one ships is decided here, not at run time: the macOS assets cover a
+             `dotnet run` on this machine, the Linux ones cover the container. Without the
+             latter, thumbnails in Docker fail at the first decode with a DllNotFoundException.
+             NoDependencies is the statically linked build — nothing here draws text, so
+             there is no reason to make the image carry fontconfig for it. -->
         <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.151.1" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.151.1" />
     </ItemGroup>
 
     <ItemGroup>

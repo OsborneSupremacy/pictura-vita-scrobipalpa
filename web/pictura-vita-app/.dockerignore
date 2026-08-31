@@ -1,0 +1,11 @@
+# Installed on the host, for the host's platform. The image runs `npm ci` for its own, and an
+# anonymous volume keeps the result from being shadowed by the bind mount at run time.
+node_modules/
+
+dist/
+tsconfig.tsbuildinfo
+
+.env
+.env.local
+
+.DS_Store

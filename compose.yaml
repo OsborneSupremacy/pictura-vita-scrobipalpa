@@ -1,0 +1,53 @@
+# Local development, both processes at once. Nothing here is a deployment: the app is
+# local-only by design (see the README), and every published port is bound to the host's
+# loopback so none of it is reachable from the network.
+
+services:
+  api:
+    build:
+      context: ./src
+      dockerfile: Pictura.Vita.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      # Inside the container the timeline always lives at /data, whatever directory the host
+      # mounted there. The API derives the image and narrative roots from this path, so all
+      # three stay in the one folder that gets mounted — which is what keeps a timeline
+      # portable rather than scattered across three separately configured paths.
+      DATA_FILE_PATH: /data/${PICTURA_VITA_DATA_FILE:-timeline-data.json}
+
+      # Thumbnails are derived and disposable, but regenerating every one of them on each
+      # `compose up` is a slow first paint for no reason, so they get a named volume rather
+      # than the container's own filesystem. Deleting it is always safe.
+      IMAGE_CACHE_PATH: /var/cache/pictura-vita/thumbnails
+    volumes:
+      # Read-write: the JSON file is edited in place by the app, and uploads and narratives
+      # are written beside it.
+      - ${PICTURA_VITA_DATA_DIR:-./data}:/data
+      - thumbnails:/var/cache/pictura-vita/thumbnails
+    ports:
+      # Same port as `dotnet run` publishes, so the API answers where the docs, the .http
+      # file and any bookmarked Scalar page already expect it.
+      - "127.0.0.1:5199:8080"
+
+  web:
+    build:
+      context: ./web/pictura-vita-app
+    environment:
+      # Container to container over Compose's own network. The browser never sees this
+      # address — it calls /api on the dev server's origin, which proxies here, which is what
+      # lets the API go on having no CORS policy at all.
+      API_ORIGIN: http://api:8080
+    volumes:
+      # The source, live: edit on the host and the browser reloads. The second entry is an
+      # anonymous volume that keeps the bind mount from burying the node_modules installed
+      # inside the image — the host's are built for macOS and would not load here.
+      - ./web/pictura-vita-app:/app
+      - /app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  thumbnails:

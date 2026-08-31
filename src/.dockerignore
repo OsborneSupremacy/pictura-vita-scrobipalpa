@@ -1,0 +1,16 @@
+# Build output from the host. Copying it in is worse than useless: obj/ carries absolute
+# macOS paths and a resolved package graph, which the Linux build inside the image would
+# then try to believe.
+**/bin/
+**/obj/
+
+# Secrets and machine-local configuration. .env in particular would be baked into the image
+# and shipped with it, and its DATA_FILE_PATH points at a path that does not exist in here.
+**/.env
+**/.env.local
+
+**/.idea/
+**/.vs/
+**/.DS_Store
+**/*.user
+**/*.DotSettings.user

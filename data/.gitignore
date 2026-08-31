@@ -1,0 +1,4 @@
+# Default mount point for the timeline directory. Whatever lands here is personal data and
+# never belongs in the repository — see "Why the data never leaves the machine" in the README.
+*
+!.gitignore
