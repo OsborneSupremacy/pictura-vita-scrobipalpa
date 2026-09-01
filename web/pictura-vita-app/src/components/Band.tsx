@@ -132,6 +132,19 @@ function RailRow({
 }) {
   return (
     <div className={`rail rail-${rail.kind}`}>
+      {/* Behind the cells rather than among them: it spans the whole window, which the
+          rail's own widths already do between them. */}
+      {rail.reference && (
+        <div className="rail-underlay">
+          <ItemBox
+            item={rail.reference}
+            timelineId={timelineId}
+            selected={rail.reference.key === selectedKey}
+            onSelect={onSelect}
+          />
+        </div>
+      )}
+
       {rail.items.map(item => (
         <div key={item.key} className="rail-cell" style={{ width: `${item.width}px` }}>
           <ItemBox

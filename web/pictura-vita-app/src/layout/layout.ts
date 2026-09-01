@@ -242,7 +242,7 @@ function buildReferenceItem(category: LayoutCategory, scale: Scale): TimeItem {
     supplementOf: null,
     targetRailIndex: null,
     reference: true,
-    // A reference bar stands in for a category with no eras; there is no episode behind it.
+    // A reference bar stands in for the category itself; there is no episode behind it.
     imageName: null
   };
 }
@@ -311,7 +311,8 @@ function packRails(
   return rails.map((rail, index) => ({
     key: `${keyPrefix}-${index}`,
     kind,
-    items: rail.items
+    items: rail.items,
+    reference: null
   }));
 }
 
@@ -355,7 +356,21 @@ function buildBand(
   }
 
   // Eras are packed first so each supplement can record which rail its bar ended up on.
-  const eraRails = packRails(eraItems, 'era', scale, `${category.categoryId}-era`);
+  const packedEras = packRails(eraItems, 'era', scale, `${category.categoryId}-era`);
+
+  // Slivers are bare stripes with no label of their own, so a category made of nothing else
+  // reads as marks scattered across empty space. When they all landed on a single rail —
+  // which is to say none of them overlap — that rail is laid over the same bar a category of
+  // pure incidents gets, and the stripes become marks *on* it. Overlapping slivers are left
+  // alone: spread over several rails there is no one rail the bar belongs to.
+  const underlay =
+    packedEras.length === 1 && eraItems.every(item => item.sliver)
+      ? buildReferenceItem(category, scale)
+      : null;
+
+  const eraRails = underlay
+    ? packedEras.map(rail => ({ ...rail, reference: underlay }))
+    : packedEras;
 
   const eraRailByEpisode = new Map<string, number>();
   eraRails.forEach((rail, index) => {

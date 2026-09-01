@@ -521,6 +521,9 @@ function drawBand(
   ];
 
   for (const { rail, top: railTop } of rails) {
+    // First, so the rail's own items paint over it — the screen puts it behind them too.
+    if (rail.reference) drawItem(canvas, rail.reference, 0, railTop, input, measure, style);
+
     let x = 0;
     for (const item of rail.items) {
       drawItem(canvas, item, x, railTop, input, measure, style);

@@ -180,6 +180,14 @@ export interface Rail {
   key: string;
   kind: RailKind;
   items: TimeItem[];
+  /**
+   * A full-width bar drawn *behind* this rail's items rather than among them, or null.
+   *
+   * Set on a rail of nothing but slivers, which carry no label and would otherwise read as
+   * loose stripes with nothing joining them. It is outside `items` because the widths in a
+   * rail sum across the window: a bar spanning the window cannot also be one of them.
+   */
+  reference: TimeItem | null;
 }
 
 export interface CategoryBand {

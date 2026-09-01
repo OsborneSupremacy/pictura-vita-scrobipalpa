@@ -380,6 +380,73 @@ describe('incidents', () => {
     const reference = drawn(layout.bands[0]!.eraRails[0]!)[0]!;
     expect(reference.reference).toBe(true);
     expect(reference.width).toBeCloseTo(1000, 6);
+    // A bar of its own, not an underlay: there is nothing on this rail to lay it under.
+    expect(layout.bands[0]!.eraRails[0]!.reference).toBeNull();
+  });
+});
+
+describe('a rail of nothing but slivers', () => {
+  // Roughly 0.27px per day at this width, so a three-week era comes out a few pixels wide.
+  const sliver = (start: string, end: string, title = 'Trip') =>
+    episode({ start: day(start), end: day(end), title });
+
+  const build = (episodes: LayoutEpisode[]) =>
+    buildLayout({
+      categories: [category('work', 0)],
+      episodes,
+      ...WINDOW,
+      totalWidth: 1000
+    });
+
+  it('lays it over a reference bar', () => {
+    const band = build([
+      sliver('2002-03-01', '2002-03-20'),
+      sliver('2005-06-01', '2005-06-20'),
+      episode({ kind: 'incident', start: day('2008-01-01') })
+    ]).bands[0]!;
+
+    expect(band.eraRails).toHaveLength(1);
+
+    const reference = band.eraRails[0]!.reference!;
+    expect(reference).not.toBeNull();
+    expect(reference.reference).toBe(true);
+    expect(reference.width).toBeCloseTo(1000, 6);
+    expect(drawn(band.eraRails[0]!).every(item => item.sliver)).toBe(true);
+  });
+
+  it('keeps the bar out of the rail\'s own items', () => {
+    const rail = build([
+      sliver('2002-03-01', '2002-03-20'),
+      sliver('2005-06-01', '2005-06-20')
+    ]).bands[0]!.eraRails[0]!;
+
+    // The rail is a flex row whose widths sum across the window; a bar spanning the window
+    // could not also be one of them, which is why it is carried beside them.
+    expect(rail.items.some(item => item.reference)).toBe(false);
+    expect(rail.items.reduce((total, item) => total + item.width, 0))
+      .toBeLessThanOrEqual(1000 + 1e-6);
+    expect(rail.reference!.width).toBeCloseTo(1000, 6);
+  });
+
+  it('draws no bar when an era is wide enough to carry a label of its own', () => {
+    const band = build([
+      sliver('2002-03-01', '2002-03-20'),
+      episode({ start: day('2004-01-01'), end: day('2007-12-31') })
+    ]).bands[0]!;
+
+    expect(band.eraRails).toHaveLength(1);
+    expect(band.eraRails[0]!.reference).toBeNull();
+  });
+
+  it('draws no bar when the slivers overlap', () => {
+    // Spread over two rails there is no single rail the bar belongs on.
+    const band = build([
+      sliver('2002-03-01', '2002-03-20', 'A'),
+      sliver('2002-03-10', '2002-03-30', 'B')
+    ]).bands[0]!;
+
+    expect(band.eraRails).toHaveLength(2);
+    expect(band.eraRails.every(rail => rail.reference === null)).toBe(true);
   });
 });
 

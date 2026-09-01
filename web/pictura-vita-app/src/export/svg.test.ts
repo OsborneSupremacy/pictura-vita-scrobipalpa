@@ -122,6 +122,24 @@ describe('renderTimelineSvg', () => {
     expect(render({ layout }).cssHeight).toBeCloseTo(surfaceHeight(layout) + 40, 6);
   });
 
+  it('draws the bar a rail of slivers sits on, beneath the slivers themselves', () => {
+    const layout = simple([
+      episode({ start: day('2002-03-01'), end: day('2002-03-20') }),
+      episode({ start: day('2005-06-01'), end: day('2005-06-20') })
+    ]);
+
+    const rail = layout.bands[0]!.eraRails[0]!;
+    expect(rail.reference).not.toBeNull();
+
+    const markup = render({ layout }).markup;
+    const bar = markup.indexOf(`opacity="${CHROME.referenceOpacity}"`);
+
+    // Painted first, so the stripes on it are drawn over it rather than under it. The band
+    // title is the bar's own label; the first stripe is the next era-coloured box after it.
+    expect(bar).toBeGreaterThan(-1);
+    expect(markup.indexOf('url(#band-0)', bar)).toBeGreaterThan(bar);
+  });
+
   it('squares the clipped end of an episode that runs past the window', () => {
     const layout = simple([
       episode({ start: day('1990-01-01'), end: day('2004-12-31') })

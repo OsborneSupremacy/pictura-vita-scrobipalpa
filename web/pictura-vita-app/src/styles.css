@@ -1000,10 +1000,20 @@ main { padding: 16px 20px 40px; }
 }
 
 .rail {
+  position: relative;
   display: flex;
   width: 100%;
   white-space: nowrap;
   align-items: flex-start;
+}
+
+/* The bar a rail of slivers is laid over. Taken out of the flex flow, since it spans the
+   window on its own, and inset to match a rail cell so it lines up with the stripes.
+   Placeholders are invisible, so it is what shows through the gaps between them. */
+.rail-underlay {
+  position: absolute;
+  inset: 0;
+  padding: 2px 0;
 }
 
 .rail-cell { flex: 0 0 auto; position: relative; }
@@ -1058,6 +1068,9 @@ main { padding: 16px 20px 40px; }
 .era.sliver { min-height: 26px; padding: 0; border-radius: 3px; }
 
 .era.reference { opacity: 0.45; }
+
+/* Below the stripes it carries, which take the default z-index of 2. */
+.rail-underlay .era { z-index: 1; }
 
 .era.selected,
 .incident.selected { outline: 2px solid #111; outline-offset: 1px; }

@@ -136,7 +136,8 @@ export function DetailPanel({
     if (!episode) {
       return (
         <p className="muted">
-          A reference bar, drawn because this category has only moments and no spans.
+          A reference bar, drawn because nothing in this category is wide enough to carry
+          the band on its own.
         </p>
       );
     }
