@@ -4,6 +4,7 @@ using Pictura.Vita.Api.Images;
 using Pictura.Vita.Api.Narratives;
 using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pictura.Vita.Api.Validators;
 using Scalar.AspNetCore;
 
@@ -20,6 +21,13 @@ builder.Services.AddOpenApi();
 // by default. Without this every endpoint that resolves a validator fails at request time
 // with "No service for type ... has been registered".
 builder.Services.AddValidatorsFromAssemblyContaining<CategoryValidator>(includeInternalTypes: true);
+
+// The timeline span validator needs to know what "today" is, because an ongoing timeline
+// stores the 9999-12-31 sentinel and is drawn to the current date instead. Resolved through
+// TimeProvider rather than read off DateTime.Today so the rule is not welded to the system
+// clock, and evaluated per request rather than captured, since a validator is registered once
+// and would otherwise freeze "today" at start-up. TryAdd because the host may register it.
+builder.Services.TryAddSingleton(TimeProvider.System);
 
 // Make the type system mean what it says at the HTTP boundary. Without this, System.Text.Json
 // happily writes a JSON null into a non-nullable `required string`, and the first thing to

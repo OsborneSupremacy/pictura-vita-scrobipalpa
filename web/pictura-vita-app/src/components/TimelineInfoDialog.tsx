@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { SubjectType, type ApiTimeline, type ApiTimelineInfo } from '../api/types';
-import type { DayNumber } from '../layout';
-import { MAX_DATE_ISO, deriveWindow, toIso } from '../layout';
+import type { DayNumber, Window } from '../layout';
+import {
+  MAX_DATE_ISO,
+  deriveWindow,
+  spanNotice,
+  spanProblem,
+  toDayNumber,
+  toIso
+} from '../layout';
 import { toLayoutEpisode } from '../api/adapter';
 
 interface Props {
@@ -92,14 +99,33 @@ function toTimelineInfo(info: ApiTimelineInfo, draft: Draft): ApiTimelineInfo {
 }
 
 /**
+ * The window the timeline would be drawn over, or null while the dates are too incomplete
+ * to have one. An ongoing timeline runs to today, exactly as `TimelineView` draws it, so a
+ * blank end date does not read as a zero-length span.
+ */
+function draftWindow(draft: Draft, today: DayNumber): Window | null {
+  if (!draft.start) return null;
+  if (!draft.ongoing && (!draft.end || draft.end < draft.start)) return null;
+
+  return {
+    floor: toDayNumber(draft.start),
+    ceiling: draft.ongoing ? today : toDayNumber(draft.end)
+  };
+}
+
+/**
  * Catches what the server cannot report usefully: a blank date serializes as "" and fails
  * JSON binding with an opaque message, long before any validator sees it.
  */
-function problemWith(draft: Draft): string | null {
+function problemWith(draft: Draft, today: DayNumber): string | null {
   if (!draft.title.trim()) return 'Give the timeline a title.';
   if (!draft.start) return 'Give the timeline a start date.';
   if (!draft.ongoing && !draft.end) return 'Give an end date, or mark the timeline as ongoing.';
   if (!draft.ongoing && draft.end < draft.start) return 'The end date is before the start date.';
+
+  const range = draftWindow(draft, today);
+  const span = range && spanProblem(range.floor, range.ceiling);
+  if (span) return span;
 
   if (draft.subjectType === SubjectType.Person) {
     if (!draft.name.trim()) return 'Give the person a name.';
@@ -146,7 +172,12 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
     }));
   };
 
-  const problem = problemWith(draft);
+  const problem = problemWith(draft, today);
+
+  // Held back while something is outright wrong, so the dialog never shows a complaint and
+  // an aside at the same time.
+  const range = draftWindow(draft, today);
+  const notice = !problem && range ? spanNotice(range.floor, range.ceiling) : null;
 
   const save = async () => {
     if (problem) {
@@ -331,6 +362,8 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
         )}
 
         {(error ?? problem) && <p className="bad">{error ?? problem}</p>}
+
+        {notice && <p className="warn">{notice}</p>}
 
         <footer>
           <button type="button" onClick={onClose}>

@@ -22,22 +22,44 @@ const MONTHS_LONG = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+/** The grains that step in whole years and snap to a round multiple of them. */
+type MultiYearGrain = 'fiveYears' | 'tenYears' | 'fiftyYears' | 'hundredYears';
+
+const STEP_YEARS: Record<MultiYearGrain, number> = {
+  fiveYears: 5,
+  tenYears: 10,
+  fiftyYears: 50,
+  hundredYears: 100
+};
+
 /**
- * Chooses the axis grain from the span of the window, matching the original:
- * up to 1 year -> months, up to 10 -> years, up to 80 -> five years, beyond -> decades.
+ * Chooses the axis grain from the span of the window.
+ *
+ * The first four thresholds are the original's: up to 1 year -> months, up to 10 -> years,
+ * up to 80 -> five years, beyond -> decades. The last two are new, because decades were
+ * the original's coarsest grain and a span of several centuries shredded the axis into
+ * increments too narrow to label — which also cost the user the axis as a zoom control,
+ * since clicking an increment is how you drill in.
+ *
+ * The boundaries keep an increment wide enough to hold its label: an increment gets
+ * `stepYears * width / span` pixels, and a label like "1500-49" needs about 54 of them at
+ * the 12px the stylesheet sets. Held against a deliberately narrow 1200px surface, that
+ * puts the changeover at roughly 20 years of span per year of step.
  */
 export function chooseGrain(floor: DayNumber, ceiling: DayNumber): AxisGrain {
   const years = wholeYearsBetween(floor, ceiling);
   if (years <= 1) return 'month';
   if (years <= 10) return 'year';
   if (years <= 80) return 'fiveYears';
-  return 'tenYears';
+  if (years <= 200) return 'tenYears';
+  if (years <= 1000) return 'fiftyYears';
+  return 'hundredYears';
 }
 
 /**
  * Snaps backwards to the natural boundary the grain starts on, so increments land on
- * round numbers (the 1st of a month, Jan 1, a year divisible by 5 or 10) rather than on
- * an arbitrary offset from the window's start.
+ * round numbers (the 1st of a month, Jan 1, a year divisible by 5, 10, 50 or 100) rather
+ * than on an arbitrary offset from the window's start.
  */
 export function snapBack(dayNumber: DayNumber, grain: AxisGrain): DayNumber {
   switch (grain) {
@@ -46,8 +68,10 @@ export function snapBack(dayNumber: DayNumber, grain: AxisGrain): DayNumber {
     case 'year':
       return startOfYear(dayNumber);
     case 'fiveYears':
-    case 'tenYears': {
-      const step = grain === 'fiveYears' ? 5 : 10;
+    case 'tenYears':
+    case 'fiftyYears':
+    case 'hundredYears': {
+      const step = STEP_YEARS[grain];
       const { year } = toCivil(dayNumber);
       // Math.floor rather than % so that negative years snap backwards too.
       return fromCivil({ year: Math.floor(year / step) * step, month: 1, day: 1 });
@@ -62,9 +86,10 @@ function advance(dayNumber: DayNumber, grain: AxisGrain): DayNumber {
     case 'year':
       return addYears(dayNumber, 1);
     case 'fiveYears':
-      return addYears(dayNumber, 5);
     case 'tenYears':
-      return addYears(dayNumber, 10);
+    case 'fiftyYears':
+    case 'hundredYears':
+      return addYears(dayNumber, STEP_YEARS[grain]);
   }
 }
 
@@ -84,8 +109,13 @@ function labelsFor(
       };
     case 'year':
       return { label: String(from.year), longLabel: String(from.year) };
+    case 'hundredYears':
+      // A century snaps to a round hundred, so the decade digits are always "00-99" and
+      // spelling them out says nothing. "1500s" is both shorter and how centuries are read.
+      return { label: `${from.year}s`, longLabel: `${from.year} - ${to.year}` };
     case 'fiveYears':
     case 'tenYears':
+    case 'fiftyYears':
       return {
         label: `${from.year}-${String(to.year % 100).padStart(2, '0')}`,
         longLabel: `${from.year} - ${to.year}`

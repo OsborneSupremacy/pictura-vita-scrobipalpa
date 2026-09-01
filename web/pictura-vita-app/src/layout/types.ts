@@ -90,7 +90,13 @@ export interface LayoutInput {
 
 /** Layout output types. */
 
-export type AxisGrain = 'month' | 'year' | 'fiveYears' | 'tenYears';
+export type AxisGrain =
+  | 'month'
+  | 'year'
+  | 'fiveYears'
+  | 'tenYears'
+  | 'fiftyYears'
+  | 'hundredYears';
 
 export interface AxisIncrement {
   key: string;

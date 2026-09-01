@@ -12,7 +12,12 @@ describe('chooseGrain', () => {
     ['2020-01-01', '2030-01-01', 'year'],
     ['1980-01-01', '2030-01-01', 'fiveYears'],
     ['1950-01-01', '2030-01-01', 'fiveYears'],
-    ['1900-01-01', '2030-01-01', 'tenYears']
+    ['1900-01-01', '2030-01-01', 'tenYears'],
+    // Decades were the original's coarsest grain; these three are the extension.
+    ['1826-01-01', '2026-01-01', 'tenYears'],
+    ['1825-01-01', '2026-01-01', 'fiftyYears'],
+    ['1026-01-01', '2026-01-01', 'fiftyYears'],
+    ['1025-01-01', '2026-01-01', 'hundredYears']
   ])('%s to %s uses %s increments', (floor, ceiling, expected) => {
     expect(chooseGrain(day(floor), day(ceiling))).toBe(expected);
   });
@@ -24,6 +29,8 @@ describe('snapBack', () => {
     expect(toIso(snapBack(day('2024-06-17'), 'year'))).toBe('2024-01-01');
     expect(toIso(snapBack(day('1987-06-17'), 'fiveYears'))).toBe('1985-01-01');
     expect(toIso(snapBack(day('1987-06-17'), 'tenYears'))).toBe('1980-01-01');
+    expect(toIso(snapBack(day('1987-06-17'), 'fiftyYears'))).toBe('1950-01-01');
+    expect(toIso(snapBack(day('1987-06-17'), 'hundredYears'))).toBe('1900-01-01');
   });
 
   it('is a no-op on a date already on a boundary', () => {
@@ -74,6 +81,31 @@ describe('buildAxis', () => {
     const axis = buildAxis(day('1950-01-01'), day('2020-01-01'), 1000);
     expect(axis[0]!.label).toBe('1950-54');
     expect(axis[0]!.longLabel).toBe('1950 - 1954');
+  });
+
+  it('labels half-century increments as a range', () => {
+    const axis = buildAxis(day('1700-01-01'), day('2000-01-01'), 1000);
+    expect(axis[0]!.grain).toBe('fiftyYears');
+    expect(axis[0]!.label).toBe('1700-49');
+    expect(axis[0]!.longLabel).toBe('1700 - 1749');
+  });
+
+  it('labels century increments as a decade name', () => {
+    const axis = buildAxis(day('1000-01-01'), day('2100-01-01'), 1000);
+    expect(axis[0]!.grain).toBe('hundredYears');
+    expect(axis.map(a => a.label).slice(0, 3)).toEqual(['1000s', '1100s', '1200s']);
+    expect(axis[0]!.longLabel).toBe('1000 - 1099');
+  });
+
+  it('keeps a long span down to a labellable number of increments', () => {
+    // The point of the coarser grains: a millennium used to come out as 100 decade
+    // buttons about 14px wide, which is narrower than any of their labels. Measured on the
+    // whole increments only — the two on the bounds are clipped by the window, as ever.
+    const axis = buildAxis(day('1026-01-01'), day('2026-01-01'), 1400);
+    const whole = axis.filter(increment => !increment.onFloor && !increment.onCeiling);
+
+    expect(axis.length).toBeLessThanOrEqual(21);
+    expect(Math.min(...whole.map(a => a.width))).toBeGreaterThan(54);
   });
 
   it('labels month increments with an abbreviated month and year', () => {
