@@ -115,12 +115,17 @@ New timelines are created in the app, from the table of contents. The id is the 
 choose, because the id names the folder.
 
 A new timeline arrives with a set of default categories chosen for its subject — a person gets
-one spine, an organisation another (`Pictura.Vita.Domain.DefaultCategories`). It has no
-episodes, and a timeline with no categories draws nothing whatever you put in it, so the
-alternative is a first run that asks you to invent a filing system before you have anything to
-file. They are a starting point, not a schema: rename, reorder or delete them in the categories
-dialog. An unused one is invisible on the timeline — the layout drops any band holding no
-episodes — so nothing is cluttered by a default you never take up.
+one spine, an organisation another (`Pictura.Vita.Domain.DefaultCategories`) — and one
+placeholder episode in each of them (`PlaceholderEpisodes`). A timeline with no categories draws
+nothing whatever you put in it, and a category with no episodes does not draw either, so without
+both a new timeline opens on an empty page and gives no clue where anything goes.
+
+The placeholders are titled "Placeholder", subtitled "Can be deleted", and are single-day
+incidents dated to the timeline's own start — not to today, which is inside the drawn window
+only while a timeline is ongoing. Each carries exactly one category, so it draws in one band and
+nowhere else. Deleting one removes its band from the timeline while leaving the category in
+place, which is the shape of the thing: the categories are a starting point, not a schema.
+Rename, reorder or delete them in the categories dialog.
 
 ## The spreadsheet is history
 

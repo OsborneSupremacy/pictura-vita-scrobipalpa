@@ -202,7 +202,7 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
     /// intermittent failure that had nothing to do with the code under test.
     /// </summary>
     [Fact]
-    public async Task CreateAsync_AddsATimelineWithNoEpisodesToTheDirectory()
+    public async Task CreateAsync_AddsATimelineToTheDirectory()
     {
         // arrange
         var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-create-{Guid.CreateVersion7()}");
@@ -220,11 +220,12 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
 
             // assert
             created.IsSuccess.Should().BeTrue();
-            created.Value.Episodes.Should().BeEmpty();
 
-            // Not empty: a new timeline starts with a set of default categories, because one
-            // with none draws nothing whatever you put in it.
+            // Neither is empty: a new timeline starts with default categories, because one with
+            // none draws nothing whatever you put in it — and with a placeholder in each,
+            // because a category with no episodes does not draw either.
             created.Value.Categories.Should().NotBeEmpty();
+            created.Value.Episodes.Should().HaveCount(created.Value.Categories.Count);
 
             // The id is the server's, and it names the directory — a caller has nothing to
             // construct the location from except what comes back.
@@ -285,6 +286,92 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
             // And it is on disk, not just in the answer.
             var onDisk = await new TimelineFileStore(root).ReadAsync(created.Value.TimelineId);
             onDisk.Value.Categories.Should().HaveCount(created.Value.Categories.Count);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(SubjectType.Person)]
+    [InlineData(SubjectType.Organization)]
+    public async Task CreateAsync_PutsOnePlaceholderInEveryDefaultCategory(SubjectType subjectType)
+    {
+        // arrange — its own root, for the reason on the creation test above.
+        var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-holder-{Guid.CreateVersion7()}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var sut = new TimelineProvider(new TimelineFileStore(root));
+            var info = _fixture.AutoFixture.Create<TimelineInfo>();
+
+            // act
+            var created = await sut.CreateAsync(new CreateTimelineRequest
+            {
+                TimelineInfo = info with
+                {
+                    TimelineSubject = info.TimelineSubject with { SubjectType = subjectType }
+                }
+            });
+
+            // assert
+            var timeline = created.Value;
+
+            timeline.Episodes.Should().OnlyContain(e =>
+                e.Title == PlaceholderEpisodes.Title && e.Subtitle == PlaceholderEpisodes.Subtitle);
+
+            // One apiece, each carrying its own category and nothing else — a placeholder tagged
+            // with two categories would draw a bar in both and read as real data.
+            timeline.Episodes.Should().OnlyContain(e => e.CategoryIds.Count == 1);
+            timeline.Episodes.SelectMany(e => e.CategoryIds)
+                .Should()
+                .BeEquivalentTo(timeline.Categories.Select(c => c.CategoryId));
+
+            // A single day, which is what makes the layout draw it as a callout rather than a
+            // bar spanning a life nobody has recorded yet.
+            timeline.Episodes.Should().OnlyContain(e =>
+                e.EpisodeType == EpisodeType.Incident && e.Start == e.End && !e.Indefinite);
+
+            // Ids are per-episode, not shared, exactly as for the categories.
+            timeline.Episodes.Select(e => e.EpisodeId).Should().OnlyHaveUniqueItems();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A placeholder nobody can see does not do the one job it has. Today — what the episode
+    /// dialog uses for a new episode — is inside the drawn window only while a timeline is
+    /// ongoing; on one that ended in the past it falls outside it.
+    /// </summary>
+    [Fact]
+    public async Task CreateAsync_PlacesPlaceholdersInsideTheWindowOfATimelineThatHasEnded()
+    {
+        // arrange
+        var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-window-{Guid.CreateVersion7()}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var sut = new TimelineProvider(new TimelineFileStore(root));
+            var info = _fixture.AutoFixture.Create<TimelineInfo>();
+
+            var start = new DateOnly(1912, 4, 10);
+            var end = new DateOnly(1912, 4, 15);
+
+            // act
+            var created = await sut.CreateAsync(new CreateTimelineRequest
+            {
+                TimelineInfo = info with { Start = start, End = end, Ongoing = false }
+            });
+
+            // assert
+            created.Value.Episodes.Should().NotBeEmpty();
+            created.Value.Episodes.Should().OnlyContain(e => e.Start >= start && e.End <= end);
         }
         finally
         {

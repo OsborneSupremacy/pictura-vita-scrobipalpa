@@ -120,19 +120,23 @@ public class TimelineProvider
     /// The id is generated here rather than accepted from the caller, because the id names the
     /// directory: taking one from a request would be taking a path from a request.
     ///
-    /// It starts with no episodes but with a set of default categories chosen for the kind of
-    /// subject it is about — see <see cref="DefaultCategories"/>. A timeline with no categories
-    /// draws nothing whatever you put in it, so the alternative is a first run that asks you to
-    /// invent a filing system before you have anything to file.
+    /// It starts with a set of default categories chosen for the kind of subject it is about
+    /// (see <see cref="DefaultCategories"/>), and one placeholder episode in each of them (see
+    /// <see cref="PlaceholderEpisodes"/>). A timeline with no categories draws nothing whatever
+    /// you put in it, and a category with no episodes does not draw either — so without both,
+    /// a new timeline opens on an empty page and gives no clue where anything goes.
     /// </summary>
     public async Task<Result<Timeline>> CreateAsync(CreateTimelineRequest request)
     {
+        var categories = DefaultCategories.For(request.TimelineInfo.TimelineSubject.SubjectType);
+
         var timeline = new Timeline
         {
             TimelineId = Guid.CreateVersion7(),
             TimelineInfo = request.TimelineInfo,
-            Episodes = [],
-            Categories = [.. DefaultCategories.For(request.TimelineInfo.TimelineSubject.SubjectType)]
+            // The categories have to exist before the placeholders, which carry their ids.
+            Episodes = [.. PlaceholderEpisodes.For(categories, request.TimelineInfo.Start)],
+            Categories = [.. categories]
         };
 
         var created = await _store.CreateAsync(timeline);
