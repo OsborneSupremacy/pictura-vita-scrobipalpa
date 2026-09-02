@@ -202,7 +202,7 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
     /// intermittent failure that had nothing to do with the code under test.
     /// </summary>
     [Fact]
-    public async Task CreateAsync_AddsAnEmptyTimelineToTheDirectory()
+    public async Task CreateAsync_AddsATimelineWithNoEpisodesToTheDirectory()
     {
         // arrange
         var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-create-{Guid.CreateVersion7()}");
@@ -221,7 +221,10 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
             // assert
             created.IsSuccess.Should().BeTrue();
             created.Value.Episodes.Should().BeEmpty();
-            created.Value.Categories.Should().BeEmpty();
+
+            // Not empty: a new timeline starts with a set of default categories, because one
+            // with none draws nothing whatever you put in it.
+            created.Value.Categories.Should().NotBeEmpty();
 
             // The id is the server's, and it names the directory — a caller has nothing to
             // construct the location from except what comes back.
@@ -239,6 +242,90 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Theory]
+    [InlineData(SubjectType.Person)]
+    [InlineData(SubjectType.Organization)]
+    public async Task CreateAsync_SeedsTheDefaultCategoriesForTheSubject(SubjectType subjectType)
+    {
+        // arrange — its own root, for the reason on the test above.
+        var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-seed-{Guid.CreateVersion7()}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            var sut = new TimelineProvider(new TimelineFileStore(root));
+
+            var info = _fixture.AutoFixture.Create<TimelineInfo>();
+
+            // act
+            var created = await sut.CreateAsync(new CreateTimelineRequest
+            {
+                TimelineInfo = info with
+                {
+                    TimelineSubject = info.TimelineSubject with { SubjectType = subjectType }
+                }
+            });
+
+            // assert
+            created.IsSuccess.Should().BeTrue();
+            created.Value.Categories.Should().BeEquivalentTo(
+                DefaultCategories.For(subjectType),
+                // The ids are new on every call by design, so they cannot match.
+                options => options.Excluding(c => c.CategoryId));
+
+            // Every band needs an icon and a place in the order, and the order has to be the
+            // contiguous run the categories dialog renumbers to.
+            created.Value.Categories.Should().OnlyContain(c => c.Icon.Length > 0);
+            created.Value.Categories.Select(c => c.SortOrder)
+                .Should()
+                .BeEquivalentTo(Enumerable.Range(0, created.Value.Categories.Count));
+
+            // And it is on disk, not just in the answer.
+            var onDisk = await new TimelineFileStore(root).ReadAsync(created.Value.TimelineId);
+            onDisk.Value.Categories.Should().HaveCount(created.Value.Categories.Count);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The defaults are built fresh per call rather than held in a static list. If they were
+    /// cached, every timeline ever created would share one set of category ids — and an
+    /// episode's CategoryIds would then resolve against whichever timeline was open.
+    /// </summary>
+    [Fact]
+    public void DefaultCategories_GiveEveryTimelineItsOwnCategoryIds()
+    {
+        // act
+        var first = DefaultCategories.For(SubjectType.Person);
+        var second = DefaultCategories.For(SubjectType.Person);
+
+        // assert
+        first.Select(c => c.CategoryId)
+            .Should()
+            .NotIntersectWith(second.Select(c => c.CategoryId));
+
+        first.Select(c => c.CategoryId).Should().OnlyHaveUniqueItems();
+    }
+
+    /// <summary>
+    /// Icon names are Lucide's own kebab-case form, and the front end resolves them through
+    /// CATEGORY_ICONS in web/pictura-vita-app/src/icons/registry.ts. Nothing here can check a
+    /// name is in that registry — it is another language — so this checks the shape, and the
+    /// registry stays the list to add a new name to.
+    /// </summary>
+    [Theory]
+    [InlineData(SubjectType.Person)]
+    [InlineData(SubjectType.Organization)]
+    public void DefaultCategories_UseKebabCaseIconNames(SubjectType subjectType)
+    {
+        DefaultCategories.For(subjectType)
+            .Should()
+            .OnlyContain(c => c.Icon.All(character => char.IsAsciiLetterLower(character) || character == '-'));
     }
 
     [Fact]

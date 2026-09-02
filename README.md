@@ -16,11 +16,11 @@ You record **episodes** (jobs, homes, relationships, illnesses, cars, speeding t
 
 **This repository** is the rewrite, and it took several runs at it:
 
-| When | What |
-| --- | --- |
-| Jul 2022 | First attempt: an ASP.NET host with an Angular `ClientApp`. Petered out in 2023. |
-| Jan 2025 | Restart. Domain model, minimal API over a JSON flat file, and an Excel importer to lift the spreadsheet in. |
-| Jun 2025 | A Next.js front end, barely started. |
+| When     | What                                                                                                                                                                               |
+|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Jul 2022 | First attempt: an ASP.NET host with an Angular `ClientApp`. Petered out in 2023.                                                                                                   |
+| Jan 2025 | Restart. Domain model, minimal API over a JSON flat file, and an Excel importer to lift the spreadsheet in.                                                                        |
+| Jun 2025 | A Next.js front end, barely started.                                                                                                                                               |
 | Aug 2026 | Next.js discarded, React + Vite front end built, the v1 layout engine reproduced as a pure module, editing moved into the app, and the spreadsheet retired as the source of truth. |
 
 The 2026 pass is where it became a real application rather than a viewer: episode, category, subject and timeline editing; per-category icons and colours; confidentiality filtering; zoom; episode images; Markdown narratives; and JSON export.
@@ -174,12 +174,12 @@ Zoom recomputes client-side. v1 refetched from the server on every zoom; when la
 
 ## Docs
 
-| Document | What it covers |
-| --- | --- |
-| [docs/original-version-spec.md](docs/original-version-spec.md) | v1's data model, stored-procedure contract and layout algorithm, reverse-engineered from the archive — including the bugs deliberately not reproduced |
-| [docs/data-store.md](docs/data-store.md) | One folder per timeline, how to migrate to it, and why the importer is now retired |
-| [docs/image-support.md](docs/image-support.md) | Image storage, EXIF stripping, thumbnail cache, path-traversal defences |
-| [docs/narrative-support.md](docs/narrative-support.md) | Markdown narratives: why a file and not a field, naming, and why the renderer needs no sanitizer |
-| [web/pictura-vita-app/README.md](web/pictura-vita-app/README.md) | Front-end scripts and the layout engine in detail |
+| Document                                                         | What it covers                                                                                                                                        |
+|------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [docs/original-version-spec.md](docs/original-version-spec.md)   | v1's data model, stored-procedure contract and layout algorithm, reverse-engineered from the archive — including the bugs deliberately not reproduced |
+| [docs/data-store.md](docs/data-store.md)                         | One folder per timeline, how to migrate to it, and why the importer is now retired                                                                    |
+| [docs/image-support.md](docs/image-support.md)                   | Image storage, EXIF stripping, thumbnail cache, path-traversal defences                                                                               |
+| [docs/narrative-support.md](docs/narrative-support.md)           | Markdown narratives: why a file and not a field, naming, and why the renderer needs no sanitizer                                                      |
+| [web/pictura-vita-app/README.md](web/pictura-vita-app/README.md) | Front-end scripts and the layout engine in detail                                                                                                     |
 
 These are working notes rather than user documentation: they record *why* a decision went the way it did, which is the part that is expensive to recover later.

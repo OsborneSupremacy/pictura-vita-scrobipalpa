@@ -114,6 +114,14 @@ a name, and it does not care who put the file there.
 New timelines are created in the app, from the table of contents. The id is the server's to
 choose, because the id names the folder.
 
+A new timeline arrives with a set of default categories chosen for its subject — a person gets
+one spine, an organisation another (`Pictura.Vita.Domain.DefaultCategories`). It has no
+episodes, and a timeline with no categories draws nothing whatever you put in it, so the
+alternative is a first run that asks you to invent a filing system before you have anything to
+file. They are a starting point, not a schema: rename, reorder or delete them in the categories
+dialog. An unused one is invisible on the timeline — the layout drops any band holding no
+episodes — so nothing is cluttered by a default you never take up.
+
 ## The spreadsheet is history
 
 Until 2026-08-30 the Excel workbook `data.xlsx` was authoritative and the JSON was a derived
