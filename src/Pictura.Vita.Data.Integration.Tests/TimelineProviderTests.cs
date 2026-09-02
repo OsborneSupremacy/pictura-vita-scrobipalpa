@@ -192,48 +192,70 @@ public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    /// <summary>
+    /// Runs against a root of its own rather than the shared fixture.
+    ///
+    /// A created timeline is empty, and every other test in this class arranges with
+    /// <c>.First()</c> and then reaches for <c>Episodes.First()</c> or
+    /// <c>Categories.First()</c>. Adding an empty timeline to the shared root made those fail
+    /// whenever the file system happened to enumerate the new directory first — an
+    /// intermittent failure that had nothing to do with the code under test.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_AddsAnEmptyTimelineToTheDirectory()
     {
         // arrange
-        var sut = new TimelineProvider(_fixture.Store);
-        var before = (await _fixture.GetTimelinesAsync()).Count;
+        var root = Path.Combine(Path.GetTempPath(), $"pictura-vita-create-{Guid.CreateVersion7()}");
+        Directory.CreateDirectory(root);
 
-        // act
-        var created = await sut.CreateAsync(new CreateTimelineRequest
+        try
         {
-            TimelineInfo = _fixture.AutoFixture.Create<TimelineInfo>()
-        });
+            var sut = new TimelineProvider(new TimelineFileStore(root));
 
-        // assert
-        created.IsSuccess.Should().BeTrue();
-        created.Value.Episodes.Should().BeEmpty();
-        created.Value.Categories.Should().BeEmpty();
+            // act
+            var created = await sut.CreateAsync(new CreateTimelineRequest
+            {
+                TimelineInfo = _fixture.AutoFixture.Create<TimelineInfo>()
+            });
 
-        // The id is the server's, and it names the directory — a caller has nothing to
-        // construct the location from except what comes back.
-        created.Value.TimelineId.Should().NotBe(Guid.Empty);
+            // assert
+            created.IsSuccess.Should().BeTrue();
+            created.Value.Episodes.Should().BeEmpty();
+            created.Value.Categories.Should().BeEmpty();
 
-        (await _fixture.GetTimelinesFromDiskAsync()).Should().HaveCount(before + 1);
-        (await sut.GetAllSummariesAsync())
-            .Should()
-            .ContainSingle(s => s.TimelineId == created.Value.TimelineId);
+            // The id is the server's, and it names the directory — a caller has nothing to
+            // construct the location from except what comes back.
+            created.Value.TimelineId.Should().NotBe(Guid.Empty);
+
+            (await sut.GetAllSummariesAsync())
+                .Should()
+                .ContainSingle(s => s.TimelineId == created.Value.TimelineId);
+
+            // Read back through a second store, to prove it reached disk rather than a cache.
+            var onDisk = await new TimelineFileStore(root).ReadAsync(created.Value.TimelineId);
+            onDisk.IsSuccess.Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
     public async Task GetCategoriesAsync_GivenValidRequest_ReturnsCategories()
     {
         // arrange
-        var timelineId = (await _fixture.GetTimelinesAsync()).First().TimelineId;
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var result = (await sut.GetCategoriesAsync(timelineId)).Value.ToList();
+        var result = await sut.GetCategoriesAsync(timeline.TimelineId);
 
-        // assert
-        result.Should()
-            .NotBeNull()
-            .And.BeOfType<List<Category>>();
+        // assert — the timeline's own categories, not merely something list-shaped. This used
+        // to call ToList() on the answer and then assert it was a List, which was a fact about
+        // the test rather than about the provider.
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(timeline.Categories);
     }
 
     [Fact]

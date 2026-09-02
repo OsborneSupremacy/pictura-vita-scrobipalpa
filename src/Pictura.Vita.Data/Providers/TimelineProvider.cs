@@ -143,7 +143,15 @@ public class TimelineProvider
             timeline => timeline with { TimelineInfo = request.TimelineInfo },
             cancellationToken);
 
-    public async Task<Result<IEnumerable<Category>>> GetCategoriesAsync(
+    /// <summary>
+    /// A timeline's categories, copied out of it.
+    ///
+    /// A list rather than a sequence, and typed as one: the copy is what stops a caller
+    /// reaching through into the collection on a record that is meant to be immutable, and a
+    /// looser return type would only invite the assumption that it is lazy and cheap to
+    /// re-enumerate. It is neither — it has already read the whole file.
+    /// </summary>
+    public async Task<Result<IReadOnlyList<Category>>> GetCategoriesAsync(
         Guid timelineId,
         CancellationToken cancellationToken = default)
     {

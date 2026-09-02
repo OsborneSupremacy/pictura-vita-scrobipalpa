@@ -163,7 +163,7 @@ app.MapGet("/timelines/{timelineId:guid}/categories", async (
         CancellationToken cancellationToken) =>
         Ok(await timelineProvider.GetCategoriesAsync(timelineId, cancellationToken)))
     .WithDisplayName("Get all categories for a timeline")
-    .Produces<IEnumerable<Category>>()
+    .Produces<IReadOnlyList<Category>>()
     .Produces(StatusCodes.Status404NotFound);
 
 app.MapGet("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (

@@ -8,6 +8,10 @@ namespace Pictura.Vita.Data.Integration.Tests.Fixtures;
 /// <summary>
 /// A throwaway timelines root, seeded with fabricated timelines — one directory each, exactly
 /// as the application lays them out on disk.
+///
+/// Shared by every test in a class, and the seeded population is part of the contract: tests
+/// arrange with <c>.First()</c> and assume it has episodes and categories. A test that adds or
+/// removes a timeline must therefore use a root of its own, not this one.
 /// </summary>
 public class TimelineStoreFixture : IDisposable
 {
@@ -61,11 +65,19 @@ public class TimelineStoreFixture : IDisposable
         }
     }
 
+    /// <summary>
+    /// Every timeline in the root, ordered by id.
+    ///
+    /// The order matters because most tests arrange with <c>.First()</c>. <c>Ids()</c> reports
+    /// whatever order the file system enumerates directories in, which is arbitrary and can
+    /// differ between two runs over the same directory — so without this, "the first timeline"
+    /// is a different timeline from one run to the next.
+    /// </summary>
     private static async Task<List<Timeline>> ReadAllAsync(TimelineFileStore store)
     {
         var timelines = new List<Timeline>();
 
-        foreach (var id in store.Ids())
+        foreach (var id in store.Ids().OrderBy(id => id))
         {
             var timeline = await store.ReadAsync(id);
 
