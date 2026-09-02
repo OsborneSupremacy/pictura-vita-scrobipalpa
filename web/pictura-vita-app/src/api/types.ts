@@ -51,7 +51,7 @@ export interface ApiEpisode {
    * existed, as with `icon` and `color` on a category.
    *
    * Only the name is stored. Whether a file of that name actually exists is a separate
-   * question, answered by `GET /timelines/{id}/images`.
+   * question, answered by `GET /v1/timelines/{id}/images`.
    */
   imageName: string;
   /**
@@ -59,7 +59,7 @@ export interface ApiEpisode {
    * null in files written before narratives existed.
    *
    * As with `imageName`, only the name is stored. What is in the file, and whether there is
-   * a file at all, are separate questions answered by `GET /timelines/{id}/narratives`.
+   * a file at all, are separate questions answered by `GET /v1/timelines/{id}/narratives`.
    */
   narrativeName: string;
   episodeType: number;

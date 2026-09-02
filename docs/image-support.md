@@ -46,7 +46,7 @@ upload, and up front for a timeline created in the app.
 
 ## Uploading
 
-`POST /timelines/{timelineId}/images`, multipart, fields `file` and `stem`.
+`POST /v1/timelines/{timelineId}/images`, multipart, fields `file` and `stem`.
 
 The bytes are **decoded and re-encoded, never copied through**. That is what strips EXIF, and
 EXIF is the reason to bother: a phone writes GPS coordinates into every photo, so a picture of
@@ -82,7 +82,7 @@ between them they cover the cases that matter.
 
 ## Serving
 
-`GET /timelines/{timelineId}/images/{name}?size=thumb|full`
+`GET /v1/timelines/{timelineId}/images/{name}?size=thumb|full`
 
 Served through an endpoint, not a static file directory, so the sandbox is enforced in one
 place. This is not paranoia about a local app: the API is an HTTP server on loopback, and any
@@ -108,7 +108,7 @@ and fall back to streaming the original, which failed again *after* the response
 and truncated the body. An unreadable file is now an honest 404 and a log line that names the
 likely cause.
 
-`GET /timelines/{timelineId}/images` returns the names actually present on disk. The client
+`GET /v1/timelines/{timelineId}/images` returns the names actually present on disk. The client
 fetches it alongside the timeline, so the renderer knows availability *before* layout — no
 broken-image flicker, no reserved space that collapses. "No image" and "image missing" become
 the same code path. The per-request 404 stays as the backstop.
@@ -172,7 +172,7 @@ name is present on disk, and the box is at least `THUMBNAIL_MIN_WIDTH_PX` wide.
 1. `Episode.ImageName`, `InsertEpisodeRequest.ImageName`, validators, `RandomTimelineProvider`.
 2. Importer: `ImageName` column → `Occurrence` → `Episode`.
 3. `ImageStore` in the API: root resolution, name validation, listing, thumbnail cache.
-4. Endpoints: `/timelines/{id}/images` and `/timelines/{id}/images/{name}`.
+4. Endpoints: `/v1/timelines/{id}/images` and `/v1/timelines/{id}/images/{name}`.
 5. Layout: `imageName` on `LayoutEpisode`, `availableImageNames` on `LayoutInput`,
    `imageName` on `TimeItem`, `THUMBNAIL_MIN_WIDTH_PX`. Tests.
 6. Render: thumbnail in the bar (`Band`), thumbnail in the detail panel opening a full-size

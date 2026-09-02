@@ -73,11 +73,11 @@ everything else in the application has a second copy in the JSON store.
 
 ## Endpoints
 
-- `GET /timelines/{id}/narratives` — the names present on disk. Fetched with the timeline, so
+- `GET /v1/timelines/{id}/narratives` — the names present on disk. Fetched with the timeline, so
   the detail panel knows whether to offer "Read narrative" *before* it draws. A button that
   turns out to open nothing is worse than no button.
-- `GET /timelines/{id}/narratives/{name}` — the Markdown, as `text/markdown`.
-- `PUT /timelines/{id}/narratives` — `{ name, stem, text }`, answers `{ narrativeName }`.
+- `GET /v1/timelines/{id}/narratives/{name}` — the Markdown, as `text/markdown`.
+- `PUT /v1/timelines/{id}/narratives` — `{ name, stem, text }`, answers `{ narrativeName }`.
   Empty `name` means "generate one from `stem`". The name stays in the body rather than the
   path because on a first save there is not one yet, and a PUT to a URL that cannot be written
   down is worse than a body that explains itself.
@@ -110,7 +110,7 @@ produced to sanitize:
   nothing leaves the machine, and a leak of *which episode is being read, and when*, to
   whoever serves it. Anything else renders as its alt text.
 
-  The name is also checked against `GET /timelines/{id}/images` before an `<img>` is emitted
+  The name is also checked against `GET /v1/timelines/{id}/images` before an `<img>` is emitted
   at all — the rule the layout and the detail panel already follow — so a stale reference
   draws as alt text rather than a broken-image glyph in an empty frame.
 

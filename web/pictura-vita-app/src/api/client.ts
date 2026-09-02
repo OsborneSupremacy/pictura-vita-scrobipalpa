@@ -10,7 +10,13 @@ import type {
 } from './types';
 
 // Defaults to the dev-server proxy (see vite.config.ts) so the browser stays same-origin.
-const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
+// This is the API's root, not a versioned prefix — the version segment is added below.
+const apiRoot = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
+
+// Every path in this file is relative to a version, and the version is written once here
+// rather than into each of the two dozen call sites below. The API serves nothing off an
+// unversioned path, so dropping this segment gets a 404 rather than an older shape.
+const baseUrl = `${apiRoot}/v1`;
 
 /** Thrown when the API cannot be reached at all, as opposed to answering with an error. */
 export class ApiUnreachableError extends Error {

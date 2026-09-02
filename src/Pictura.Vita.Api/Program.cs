@@ -95,20 +95,27 @@ var randomTimelineProvider = new RandomTimelineProvider();
 var imageStore = ImageStore.Create(timelinesRoot);
 var narrativeStore = NarrativeStore.Create(timelinesRoot);
 
+// Every endpoint hangs off a version group, so the "/v1" segment is written once instead of
+// being repeated on forty routes — and a future v2 is a second group beside this one rather
+// than a prefix edited into every line. Nothing is served off an unversioned path: a caller
+// that omits the segment gets a 404, which is a better answer than silently getting whatever
+// the current shape happens to be.
+var v1 = app.MapGroup("/v1");
+
 // timeline endpoints
 
 // The CancellationToken is bound by the framework to HttpContext.RequestAborted, so a browser
 // that navigates away mid-listing stops the server reading the rest of the timeline files.
-app.MapGet("/timelines", async (CancellationToken cancellationToken) =>
+v1.MapGet("/timelines", async (CancellationToken cancellationToken) =>
         Results.Ok(await timelineProvider.GetAllSummariesAsync(cancellationToken)))
     .WithDisplayName("List every timeline")
     .Produces<IReadOnlyList<TimelineSummary>>();
 
-app.MapGet("/timelines/random", () => Results.Ok(randomTimelineProvider.Generate()))
+v1.MapGet("/timelines/random", () => Results.Ok(randomTimelineProvider.Generate()))
     .WithDisplayName("Get a random timeline")
     .Produces<Timeline>();
 
-app.MapPost("/timelines", async (
+v1.MapPost("/timelines", async (
         [FromServices] CreateTimelineRequestValidator validator,
         [FromBody] CreateTimelineRequest request,
         CancellationToken cancellationToken) =>
@@ -120,14 +127,14 @@ app.MapPost("/timelines", async (
         var created = await timelineProvider.CreateAsync(request);
 
         return created.IsSuccess
-            ? Results.Created($"/timelines/{created.Value.TimelineId}", created.Value)
+            ? Results.Created($"/v1/timelines/{created.Value.TimelineId}", created.Value)
             : Faulted(created.Exception);
     })
     .WithDisplayName("Create a new timeline")
     .Produces<Timeline>(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest);
 
-app.MapGet("/timelines/{timelineId:guid}", async (
+v1.MapGet("/timelines/{timelineId:guid}", async (
         [FromRoute] Guid timelineId,
         CancellationToken cancellationToken) =>
         Ok(await timelineProvider.GetAsync(timelineId, cancellationToken)))
@@ -137,7 +144,7 @@ app.MapGet("/timelines/{timelineId:guid}", async (
 
 // Takes only the information being changed. It previously accepted a whole Timeline, which
 // meant sending every episode back to the server to rename the subject.
-app.MapPut("/timelines/{timelineId:guid}/info", async (
+v1.MapPut("/timelines/{timelineId:guid}/info", async (
         [FromRoute] Guid timelineId,
         [FromServices] UpdateTimelineInfoRequestValidator validator,
         [FromBody] UpdateTimelineInfoRequest request,
@@ -158,7 +165,7 @@ app.MapPut("/timelines/{timelineId:guid}/info", async (
 
 // category endpoints
 
-app.MapGet("/timelines/{timelineId:guid}/categories", async (
+v1.MapGet("/timelines/{timelineId:guid}/categories", async (
         [FromRoute] Guid timelineId,
         CancellationToken cancellationToken) =>
         Ok(await timelineProvider.GetCategoriesAsync(timelineId, cancellationToken)))
@@ -166,7 +173,7 @@ app.MapGet("/timelines/{timelineId:guid}/categories", async (
     .Produces<IReadOnlyList<Category>>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapGet("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+v1.MapGet("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid categoryId,
         CancellationToken cancellationToken) =>
@@ -175,7 +182,7 @@ app.MapGet("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
     .Produces<Category>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/timelines/{timelineId:guid}/categories", async (
+v1.MapPost("/timelines/{timelineId:guid}/categories", async (
         [FromRoute] Guid timelineId,
         [FromServices] InsertCategoryRequestValidator validator,
         [FromBody] InsertCategoryRequest request,
@@ -191,7 +198,7 @@ app.MapPost("/timelines/{timelineId:guid}/categories", async (
 
         return created.IsSuccess
             ? Results.Created(
-                $"/timelines/{timelineId}/categories/{created.Value.CategoryId}", created.Value)
+                $"/v1/timelines/{timelineId}/categories/{created.Value.CategoryId}", created.Value)
             : Faulted(created.Exception);
     })
     .WithDisplayName("Create a new category")
@@ -199,7 +206,7 @@ app.MapPost("/timelines/{timelineId:guid}/categories", async (
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPut("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+v1.MapPut("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid categoryId,
         [FromServices] UpdateCategoryRequestValidator validator,
@@ -221,7 +228,7 @@ app.MapPut("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapDelete("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+v1.MapDelete("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid categoryId,
         CancellationToken cancellationToken) =>
@@ -233,7 +240,7 @@ app.MapDelete("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async
 
 // episode endpoints
 
-app.MapGet("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+v1.MapGet("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid episodeId,
         CancellationToken cancellationToken) =>
@@ -242,7 +249,7 @@ app.MapGet("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
     .Produces<Episode>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPost("/timelines/{timelineId:guid}/episodes", async (
+v1.MapPost("/timelines/{timelineId:guid}/episodes", async (
         [FromRoute] Guid timelineId,
         [FromServices] InsertEpisodeRequestValidator validator,
         [FromBody] InsertEpisodeRequest request,
@@ -258,7 +265,7 @@ app.MapPost("/timelines/{timelineId:guid}/episodes", async (
 
         return created.IsSuccess
             ? Results.Created(
-                $"/timelines/{timelineId}/episodes/{created.Value.EpisodeId}", created.Value)
+                $"/v1/timelines/{timelineId}/episodes/{created.Value.EpisodeId}", created.Value)
             : Faulted(created.Exception);
     })
     .WithDisplayName("Create a new episode")
@@ -266,7 +273,7 @@ app.MapPost("/timelines/{timelineId:guid}/episodes", async (
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPut("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+v1.MapPut("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid episodeId,
         [FromServices] UpdateEpisodeRequestValidator validator,
@@ -288,7 +295,7 @@ app.MapPut("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapDelete("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+v1.MapDelete("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
         [FromRoute] Guid timelineId,
         [FromRoute] Guid episodeId,
         CancellationToken cancellationToken) =>
@@ -305,12 +312,12 @@ app.MapDelete("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
 // on loopback that any page open in the browser can reach, and the file name it is asked for
 // came out of a data file.
 
-app.MapGet("/timelines/{timelineId:guid}/images", ([FromRoute] Guid timelineId) =>
+v1.MapGet("/timelines/{timelineId:guid}/images", ([FromRoute] Guid timelineId) =>
         Results.Ok(imageStore.List(timelineId)))
     .WithDisplayName("Get the image file names present for a timeline")
     .Produces<IEnumerable<string>>();
 
-app.MapPost("/timelines/{timelineId:guid}/images", async (
+v1.MapPost("/timelines/{timelineId:guid}/images", async (
         [FromRoute] Guid timelineId,
         HttpRequest request) =>
     {
@@ -343,7 +350,7 @@ app.MapPost("/timelines/{timelineId:guid}/images", async (
 
         return saved.IsSuccess
             ? Results.Created(
-                $"/timelines/{timelineId}/images/{saved.Value}", new { imageName = saved.Value })
+                $"/v1/timelines/{timelineId}/images/{saved.Value}", new { imageName = saved.Value })
             : Results.BadRequest(new { error = saved.Exception.Message });
     })
     .WithDisplayName("Upload an episode image")
@@ -351,7 +358,7 @@ app.MapPost("/timelines/{timelineId:guid}/images", async (
     .Produces(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest);
 
-app.MapGet("/timelines/{timelineId:guid}/images/{name}", (
+v1.MapGet("/timelines/{timelineId:guid}/images/{name}", (
         [FromRoute] Guid timelineId,
         [FromRoute] string name,
         [FromQuery] string? size) =>
@@ -385,12 +392,12 @@ app.MapGet("/timelines/{timelineId:guid}/images/{name}", (
 // docs/narrative-support.md; served through the API for the same reason images are, so the
 // containment check that turns a name from a data file into a path lives in one place.
 
-app.MapGet("/timelines/{timelineId:guid}/narratives", ([FromRoute] Guid timelineId) =>
+v1.MapGet("/timelines/{timelineId:guid}/narratives", ([FromRoute] Guid timelineId) =>
         Results.Ok(narrativeStore.List(timelineId)))
     .WithDisplayName("Get the narrative file names present for a timeline")
     .Produces<IEnumerable<string>>();
 
-app.MapGet("/timelines/{timelineId:guid}/narratives/{name}", (
+v1.MapGet("/timelines/{timelineId:guid}/narratives/{name}", (
         [FromRoute] Guid timelineId,
         [FromRoute] string name) =>
     {
@@ -409,7 +416,7 @@ app.MapGet("/timelines/{timelineId:guid}/narratives/{name}", (
 // The name stays in the body rather than the path, because on a first save there is no name
 // yet — the server generates one from the episode's title — and a PUT to a URL that cannot be
 // written down is worse than a body that explains itself.
-app.MapPut("/timelines/{timelineId:guid}/narratives", (
+v1.MapPut("/timelines/{timelineId:guid}/narratives", (
         [FromRoute] Guid timelineId,
         [FromBody] SaveNarrativeRequest request) =>
     {

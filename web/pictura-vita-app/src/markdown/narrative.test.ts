@@ -56,7 +56,7 @@ describe('renderNarrative', () => {
     it('resolves a bare name against the timeline image folder', () => {
       const html = render('![The house](kalamazoo-house.jpg)');
 
-      expect(html).toContain(`/timelines/${TIMELINE}/images/kalamazoo-house.jpg`);
+      expect(html).toContain(`/v1/timelines/${TIMELINE}/images/kalamazoo-house.jpg`);
       expect(html).toContain('alt="The house"');
       expect(html).toContain('loading="lazy"');
     });
