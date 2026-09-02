@@ -7,37 +7,75 @@ using Pictura.Vita.Messaging;
 
 namespace Pictura.Vita.Data.Integration.Tests;
 
-public class TimelineProviderTests : IClassFixture<DataStoreFixture>
+public class TimelineProviderTests : IClassFixture<TimelineStoreFixture>
 {
-    private readonly DataStoreFixture _dataStoreFixture;
+    private readonly TimelineStoreFixture _fixture;
 
-    public TimelineProviderTests(DataStoreFixture dataStoreFixture)
+    public TimelineProviderTests(TimelineStoreFixture fixture)
     {
-        _dataStoreFixture = dataStoreFixture ?? throw new ArgumentNullException(nameof(dataStoreFixture));
+        _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
     }
 
     [Fact]
-    public async Task GetAllAsync_GivenValidRequest_ReturnsAll()
+    public async Task GetAllSummariesAsync_ReturnsOneSummaryPerTimelineOnDisk()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var expected = (await _fixture.GetTimelinesAsync()).ToList();
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var result = (await sut.GetAllAsync()).ToList();
+        var result = (await sut.GetAllSummariesAsync()).ToList();
 
         // assert
-        result.Should()
-            .NotBeNull()
-            .And.BeOfType<List<Timeline>>();
+        result.Should().HaveCount(expected.Count);
+        result.Select(s => s.TimelineId).Should().BeEquivalentTo(expected.Select(t => t.TimelineId));
+
+        // The counts are what make the table of contents worth drawing, so they are worth
+        // checking rather than assuming.
+        var sample = expected.First();
+        result.Single(s => s.TimelineId == sample.TimelineId)
+            .Should()
+            .Match<TimelineSummary>(s =>
+                s.Title == sample.TimelineInfo.Title
+                && s.EpisodeCount == sample.Episodes.Count
+                && s.CategoryCount == sample.Categories.Count);
+    }
+
+    /// <summary>
+    /// The listing is cached against each file's last-write time and length, so a write has to
+    /// be visible on the very next call. Nothing invalidates the cache explicitly — if the
+    /// staleness check is wrong, a rename made in the app never reaches the table of contents.
+    /// </summary>
+    [Fact]
+    public async Task GetAllSummariesAsync_SeesATitleChangedSinceTheLastListing()
+    {
+        // arrange
+        var timeline = (await _fixture.GetTimelinesAsync()).Last();
+        var sut = new TimelineProvider(_fixture.Store);
+
+        _ = await sut.GetAllSummariesAsync();
+
+        // act
+        await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
+        {
+            TimelineId = timeline.TimelineId,
+            TimelineInfo = timeline.TimelineInfo with { Title = "Renamed since the last listing" }
+        });
+
+        // assert
+        (await sut.GetAllSummariesAsync())
+            .Single(s => s.TimelineId == timeline.TimelineId)
+            .Title.Should()
+            .Be("Renamed since the last listing");
     }
 
     [Fact]
     public async Task GetTimelineAsync_GivenValidTimelineId_ReturnsTimeline()
     {
         // arrange
-        var timelineId = _dataStoreFixture.GetTimelines().First().TimelineId;
+        var timelineId = (await _fixture.GetTimelinesAsync()).First().TimelineId;
 
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = (await sut.GetAsync(timelineId)).Value;
@@ -53,7 +91,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task GetTimelineAsync_GivenInvalidTimelineId_ReturnsNotFound()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
         var invalidId = Guid.CreateVersion7();
 
         // act
@@ -68,16 +106,16 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateTimelineInfoAsync_GivenValidRequest_UpdatesTimeline()
     {
         // arrange
-        var timelineIn = _dataStoreFixture.GetTimelines().First();
+        var timelineIn = (await _fixture.GetTimelinesAsync()).First();
 
         var updatedTimeline = timelineIn with
         {
-            TimelineInfo = _dataStoreFixture
+            TimelineInfo = _fixture
                 .AutoFixture
                 .Create<TimelineInfo>()
         };
 
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
@@ -96,8 +134,8 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateTimelineInfoAsync_LeavesEpisodesAndCategoriesUntouched()
     {
         // arrange
-        var timelineIn = _dataStoreFixture.GetTimelines().First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var timelineIn = (await _fixture.GetTimelinesAsync()).First();
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act - editing the subject must not disturb the timeline's contents
         await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
@@ -118,13 +156,13 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateTimelineInfoAsync_GivenUnknownTimeline_ReturnsNotFound()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateTimelineInfoAsync(new UpdateTimelineInfoRequest
         {
             TimelineId = Guid.CreateVersion7(),
-            TimelineInfo = _dataStoreFixture.AutoFixture.Create<TimelineInfo>()
+            TimelineInfo = _fixture.AutoFixture.Create<TimelineInfo>()
         });
 
         // assert
@@ -132,12 +170,62 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         result.Exception.Should().BeOfType<KeyNotFoundException>();
     }
 
+    /// <summary>
+    /// A listing served entirely from the summary cache awaits nothing, so it would run to the
+    /// end of the directory however long ago the caller gave up. The check at the top of the
+    /// loop is the only thing that stops it.
+    /// </summary>
+    [Fact]
+    public async Task GetAllSummariesAsync_GivenACancelledToken_StopsEvenWhenFullyCached()
+    {
+        // arrange — prime the cache, so nothing in the second call would otherwise await.
+        var sut = new TimelineProvider(_fixture.Store);
+        _ = await sut.GetAllSummariesAsync();
+
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        // act
+        var act = async () => await sut.GetAllSummariesAsync(cancelled.Token);
+
+        // assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_AddsAnEmptyTimelineToTheDirectory()
+    {
+        // arrange
+        var sut = new TimelineProvider(_fixture.Store);
+        var before = (await _fixture.GetTimelinesAsync()).Count;
+
+        // act
+        var created = await sut.CreateAsync(new CreateTimelineRequest
+        {
+            TimelineInfo = _fixture.AutoFixture.Create<TimelineInfo>()
+        });
+
+        // assert
+        created.IsSuccess.Should().BeTrue();
+        created.Value.Episodes.Should().BeEmpty();
+        created.Value.Categories.Should().BeEmpty();
+
+        // The id is the server's, and it names the directory — a caller has nothing to
+        // construct the location from except what comes back.
+        created.Value.TimelineId.Should().NotBe(Guid.Empty);
+
+        (await _fixture.GetTimelinesFromDiskAsync()).Should().HaveCount(before + 1);
+        (await sut.GetAllSummariesAsync())
+            .Should()
+            .ContainSingle(s => s.TimelineId == created.Value.TimelineId);
+    }
+
     [Fact]
     public async Task GetCategoriesAsync_GivenValidRequest_ReturnsCategories()
     {
         // arrange
-        var timelineId = _dataStoreFixture.GetTimelines().First().TimelineId;
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var timelineId = (await _fixture.GetTimelinesAsync()).First().TimelineId;
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = (await sut.GetCategoriesAsync(timelineId)).Value.ToList();
@@ -152,7 +240,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task GetCategoriesAsync_GivenInvalidTimelineId_ReturnsNotFound()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
         var invalidId = Guid.CreateVersion7();
 
         // act
@@ -167,7 +255,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertCategoryAsync_GivenValidRequest_InsertsCategory()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var request = new InsertCategoryRequest
         {
             TimelineId = timeline.TimelineId,
@@ -179,7 +267,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Icon = "star",
             Color = "#1e5799"
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.InsertCategoryAsync(request);
@@ -198,13 +286,13 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task DeleteCategoryAsync_RemovesTheCategoryButLeavesEpisodesInPlace()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // Give the category an episode of its own; the fixture's episodes carry unrelated
         // category ids, so without this there would be no reference to observe.
-        var episode = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+        var episode = (await sut.InsertEpisodeAsync(_fixture.AutoFixture
             .Build<InsertEpisodeRequest>()
             .With(x => x.TimelineId, timeline.TimelineId)
             .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
@@ -214,7 +302,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         var episodesBefore = (await sut.GetAsync(timeline.TimelineId)).Value.Episodes.Count;
 
         // act
-        var result = await sut.DeleteCategoryAsync(category.CategoryId);
+        var result = await sut.DeleteCategoryAsync(timeline.TimelineId, category.CategoryId);
 
         // assert
         result.IsSuccess.Should().BeTrue();
@@ -236,8 +324,8 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertCategoryAsync_WritesThroughToTheFile()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var inserted = await sut.InsertCategoryAsync(new InsertCategoryRequest
@@ -256,7 +344,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         // reached the in-memory collection.
         inserted.IsSuccess.Should().BeTrue();
 
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Categories.Should()
             .Contain(c => c.CategoryId == inserted.Value.CategoryId);
@@ -266,9 +354,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateCategoryAsync_WritesThroughToTheFile()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         await sut.UpdateCategoryAsync(new UpdateCategoryRequest
@@ -278,7 +366,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Categories.Single(c => c.CategoryId == category.CategoryId)
             .Title.Should()
@@ -289,15 +377,15 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task DeleteCategoryAsync_WritesThroughToTheFile()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.Last();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        await sut.DeleteCategoryAsync(category.CategoryId);
+        await sut.DeleteCategoryAsync(timeline.TimelineId, category.CategoryId);
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Categories.Should()
             .NotContain(c => c.CategoryId == category.CategoryId);
@@ -311,9 +399,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         string start, string end, bool indefinite, EpisodeType expected)
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act - deliberately claim the wrong type; the dates decide.
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -329,7 +417,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .EpisodeType.Should()
@@ -340,9 +428,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_WritesThroughToTheFile()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -352,7 +440,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .Title.Should()
@@ -369,9 +457,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_KeepsTheImageName()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -381,7 +469,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .ImageName.Should()
@@ -393,9 +481,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange — an episode that already has an image, so the empty string has to survive
         // the round trip rather than being read as "unchanged".
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
         {
@@ -403,7 +491,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Episode = episode with { ImageName = "before.jpg" }
         });
 
-        var withImage = (await sut.GetEpisodeAsync(episode.EpisodeId)).Value;
+        var withImage = (await sut.GetEpisodeAsync(timeline.TimelineId, episode.EpisodeId)).Value;
 
         // act
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -413,7 +501,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .ImageName.Should()
@@ -424,12 +512,12 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertEpisodeAsync_KeepsTheImageName()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var inserted = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+        var inserted = (await sut.InsertEpisodeAsync(_fixture.AutoFixture
             .Build<InsertEpisodeRequest>()
             .With(x => x.TimelineId, timeline.TimelineId)
             .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
@@ -438,7 +526,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             .Create())).Value;
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == inserted.EpisodeId)
             .ImageName.Should()
@@ -455,9 +543,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_KeepsTheNarrativeName()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -467,7 +555,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .NarrativeName.Should()
@@ -479,9 +567,9 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     {
         // arrange — an episode that already has a narrative, so the empty string has to
         // survive the round trip rather than being read as "unchanged".
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
         {
@@ -489,7 +577,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             Episode = episode with { NarrativeName = "before.md" }
         });
 
-        var withNarrative = (await sut.GetEpisodeAsync(episode.EpisodeId)).Value;
+        var withNarrative = (await sut.GetEpisodeAsync(timeline.TimelineId, episode.EpisodeId)).Value;
 
         // act
         await sut.UpdateEpisodeAsync(new UpdateEpisodeRequest
@@ -499,7 +587,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
         });
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == episode.EpisodeId)
             .NarrativeName.Should()
@@ -510,12 +598,12 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertEpisodeAsync_KeepsTheNarrativeName()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var inserted = (await sut.InsertEpisodeAsync(_dataStoreFixture.AutoFixture
+        var inserted = (await sut.InsertEpisodeAsync(_fixture.AutoFixture
             .Build<InsertEpisodeRequest>()
             .With(x => x.TimelineId, timeline.TimelineId)
             .With(x => x.CategoryIds, new List<Guid> { category.CategoryId })
@@ -524,7 +612,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             .Create())).Value;
 
         // assert
-        _dataStoreFixture.GetTimelinesFromDisk()
+        (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId)
             .Episodes.Single(e => e.EpisodeId == inserted.EpisodeId)
             .NarrativeName.Should()
@@ -535,19 +623,19 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task DeleteEpisodeAsync_RemovesTheEpisodeAndWritesThroughToTheFile()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
         var remaining = timeline.Episodes.Count - 1;
         var categoriesBefore = timeline.Categories.Count;
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var result = await sut.DeleteEpisodeAsync(episode.EpisodeId);
+        var result = await sut.DeleteEpisodeAsync(timeline.TimelineId, episode.EpisodeId);
 
         // assert
         result.IsSuccess.Should().BeTrue();
 
-        var onDisk = _dataStoreFixture.GetTimelinesFromDisk()
+        var onDisk = (await _fixture.GetTimelinesFromDiskAsync())
             .Single(t => t.TimelineId == timeline.TimelineId);
 
         onDisk.Episodes.Should().NotContain(e => e.EpisodeId == episode.EpisodeId);
@@ -561,10 +649,11 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task DeleteEpisodeAsync_GivenUnknownEpisode_ReturnsNotFound()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var result = await sut.DeleteEpisodeAsync(Guid.CreateVersion7());
+        var result = await sut.DeleteEpisodeAsync(timeline.TimelineId, Guid.CreateVersion7());
 
         // assert
         result.IsSuccess.Should().BeFalse();
@@ -575,10 +664,11 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task DeleteCategoryAsync_GivenUnknownCategory_ReturnsNotFound()
     {
         // arrange
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
-        var result = await sut.DeleteCategoryAsync(Guid.CreateVersion7());
+        var result = await sut.DeleteCategoryAsync(timeline.TimelineId, Guid.CreateVersion7());
 
         // assert
         result.IsSuccess.Should().BeFalse();
@@ -589,7 +679,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateCategoryAsync_GivenValidRequest_UpdatesCategory()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
         var updatedCategory = category with
         {
@@ -602,7 +692,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             TimelineId = timeline.TimelineId,
             Category = updatedCategory
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateCategoryAsync(request);
@@ -621,14 +711,14 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateCategoryAsync_GivenInvalidTimelineId_ReturnsNotFound()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var category = timeline.Categories.First();
         var request = new UpdateCategoryRequest
         {
             TimelineId = Guid.CreateVersion7(),// invalid timeline
             Category = category
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateCategoryAsync(request);
@@ -642,14 +732,14 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateCategoryAsync_GivenInvalidCategoryId_ReturnsNotFound()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var invalidCategory = timeline.Categories.First() with { CategoryId = Guid.CreateVersion7() };
         var request = new UpdateCategoryRequest
         {
             TimelineId = timeline.TimelineId,
             Category = invalidCategory
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateCategoryAsync(request);
@@ -663,14 +753,14 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertEpisodeAsync_GivenValidRequest_InsertsEpisode()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
 
-        var request = _dataStoreFixture.AutoFixture.Build<InsertEpisodeRequest>()
+        var request = _fixture.AutoFixture.Build<InsertEpisodeRequest>()
             .With(x => x.TimelineId, timeline.TimelineId)
             .With(x => x.CategoryIds, timeline.Categories.Select(c => c.CategoryId).ToList())
             .Create();
 
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.InsertEpisodeAsync(request);
@@ -687,11 +777,11 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task InsertEpisodeAsync_GivenInvalidTimelineId_ReturnsNotFound()
     {
         // arrange
-        var request = _dataStoreFixture.AutoFixture.Build<InsertEpisodeRequest>()
+        var request = _fixture.AutoFixture.Build<InsertEpisodeRequest>()
             .With(x => x.TimelineId, Guid.CreateVersion7)
             .Create();
 
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.InsertEpisodeAsync(request);
@@ -705,7 +795,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_GivenValidRequest_UpdatesEpisode()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
 
         var updatedEpisode = episode with
@@ -727,7 +817,7 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
             TimelineId = timeline.TimelineId,
             Episode = updatedEpisode
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateEpisodeAsync(request);
@@ -744,14 +834,14 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_GivenInvalidTimelineId_ReturnsNotFound()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var episode = timeline.Episodes.First();
         var request = new UpdateEpisodeRequest
         {
             TimelineId = Guid.CreateVersion7(),
             Episode = episode
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateEpisodeAsync(request);
@@ -765,14 +855,14 @@ public class TimelineProviderTests : IClassFixture<DataStoreFixture>
     public async Task UpdateEpisodeAsync_GivenInvalidEpisodeId_ReturnsNotFound()
     {
         // arrange
-        var timeline = _dataStoreFixture.GetTimelines().First();
+        var timeline = (await _fixture.GetTimelinesAsync()).First();
         var invalidEpisode = timeline.Episodes.First() with { EpisodeId = Guid.CreateVersion7() };
         var request = new UpdateEpisodeRequest
         {
             TimelineId = timeline.TimelineId,
             Episode = invalidEpisode
         };
-        var sut = new TimelineProvider(_dataStoreFixture.DataStore);
+        var sut = new TimelineProvider(_fixture.Store);
 
         // act
         var result = await sut.UpdateEpisodeAsync(request);

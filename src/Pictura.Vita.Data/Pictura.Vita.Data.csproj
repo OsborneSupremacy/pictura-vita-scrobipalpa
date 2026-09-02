@@ -9,7 +9,7 @@
     <ItemGroup>
         <PackageReference Include="AutoBogus" Version="2.13.1" />
         <PackageReference Include="Bogus" Version="35.6.5" />
-        <PackageReference Include="JsonFlatFileDataStore" Version="2.4.3" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -20,8 +20,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="test\sample-01.json" />
-      <Content Include="test\sample-01.json">
+      <!-- The fabricated sample timeline, copied as the directory tree the API expects:
+           test/timelines/<id>/data.v1.json. Refreshed on every build, so running against it
+           never dirties the checked-in copy. -->
+      <None Remove="test\**" />
+      <Content Include="test\**">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
     </ItemGroup>

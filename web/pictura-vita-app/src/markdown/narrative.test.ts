@@ -56,13 +56,13 @@ describe('renderNarrative', () => {
     it('resolves a bare name against the timeline image folder', () => {
       const html = render('![The house](kalamazoo-house.jpg)');
 
-      expect(html).toContain(`/timeline/${TIMELINE}/image/kalamazoo-house.jpg`);
+      expect(html).toContain(`/timelines/${TIMELINE}/images/kalamazoo-house.jpg`);
       expect(html).toContain('alt="The house"');
       expect(html).toContain('loading="lazy"');
     });
 
     it('treats a leading ./ as the same bare name', () => {
-      expect(render('![](./scan.webp)')).toContain(`/image/scan.webp`);
+      expect(render('![](./scan.webp)')).toContain(`/images/scan.webp`);
     });
 
     // Loading a remote image would be the first outbound request in an application whose

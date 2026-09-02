@@ -4,6 +4,7 @@ import { SubjectType, type ApiTimeline, type ApiTimelineInfo } from '../api/type
 import type { DayNumber, Window } from '../layout';
 import {
   MAX_DATE_ISO,
+  MIN_DATE_ISO,
   deriveWindow,
   spanNotice,
   spanProblem,
@@ -12,12 +13,60 @@ import {
 } from '../layout';
 import { toLayoutEpisode } from '../api/adapter';
 
+/**
+ * Editing an existing timeline, or describing one that does not exist yet.
+ *
+ * Creation reuses this dialog rather than getting a cut-down one of its own: a new timeline
+ * needs exactly the same fields, held to exactly the same rules, and a stripped-down "just a
+ * title" form would only mean opening this one straight afterwards to say the rest.
+ */
+type Mode =
+  | { kind: 'edit'; timeline: ApiTimeline }
+  | { kind: 'create' };
+
 interface Props {
-  timeline: ApiTimeline;
+  mode: Mode;
   today: DayNumber;
-  onSaved: (info: ApiTimelineInfo) => void;
+  /** The saved information, and — when this created a timeline — the timeline it created. */
+  onSaved: (info: ApiTimelineInfo, created?: ApiTimeline) => void;
   onClose: () => void;
 }
+
+/**
+ * What a timeline looks like before anyone has said anything about it.
+ *
+ * Blank strings rather than nulls, and the sentinel for the open-ended dates, so the draft
+ * conversion below has nothing special to handle — an unfilled new timeline is the same shape
+ * as a filled one, just empty. See the note on keeping data in shape in docs/data-store.md.
+ */
+const blankInfo: ApiTimelineInfo = {
+  title: '',
+  subtitle: '',
+  start: '',
+  end: MAX_DATE_ISO,
+  ongoing: true,
+  timelineSubject: {
+    subjectType: SubjectType.Person,
+    person: {
+      nameParts: [],
+      obfuscateDates: false,
+      birthPrecision: 0,
+      birth: '',
+      deathPrecision: 0,
+      death: MAX_DATE_ISO,
+      living: true
+    },
+    organization: {
+      name: '',
+      obfuscateDates: false,
+      startPrecision: 0,
+      start: '',
+      endPrecision: 0,
+      end: MAX_DATE_ISO,
+      ongoing: true
+    }
+  }
+};
 
 interface Draft {
   title: string;
@@ -40,6 +89,16 @@ interface Draft {
 
 /** A date input cannot hold the sentinel, so show a blank until a real date is given. */
 const forInput = (iso: string) => (iso === MAX_DATE_ISO ? '' : iso);
+
+/**
+ * A date the form left blank, as something that will actually serialize.
+ *
+ * Both subject branches are always written, so on a new timeline the one nobody filled in
+ * still has to carry a date. `problemWith` already refuses to save while a date that *matters*
+ * is empty; this only covers the branch that does not. An empty string is not a DateOnly, and
+ * fails JSON binding with a message that names a field the user never saw.
+ */
+const orUnset = (iso: string) => iso || MIN_DATE_ISO;
 
 function toDraft(info: ApiTimelineInfo): Draft {
   const { person, organization, subjectType } = info.timelineSubject;
@@ -81,16 +140,16 @@ function toTimelineInfo(info: ApiTimelineInfo, draft: Draft): ApiTimelineInfo {
       person: {
         ...person,
         nameParts: draft.name.trim().split(/\s+/).filter(Boolean),
-        birth: draft.personBirth,
-        death: draft.living ? MAX_DATE_ISO : draft.personDeath,
+        birth: orUnset(draft.personBirth),
+        death: draft.living ? MAX_DATE_ISO : orUnset(draft.personDeath),
         living: draft.living,
         obfuscateDates: draft.personObfuscate
       },
       organization: {
         ...organization,
         name: draft.orgName,
-        start: draft.orgStart,
-        end: draft.orgOngoing ? MAX_DATE_ISO : draft.orgEnd,
+        start: orUnset(draft.orgStart),
+        end: draft.orgOngoing ? MAX_DATE_ISO : orUnset(draft.orgEnd),
         ongoing: draft.orgOngoing,
         obfuscateDates: draft.orgObfuscate
       }
@@ -142,9 +201,12 @@ function problemWith(draft: Draft, today: DayNumber): string | null {
   return null;
 }
 
-export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props) {
+export function TimelineInfoDialog({ mode, today, onSaved, onClose }: Props) {
+  const creating = mode.kind === 'create';
+  const info = creating ? blankInfo : mode.timeline.timelineInfo;
+
   const dialog = useRef<HTMLDialogElement>(null);
-  const [draft, setDraft] = useState<Draft>(() => toDraft(timeline.timelineInfo));
+  const [draft, setDraft] = useState<Draft>(() => toDraft(info));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,9 +222,12 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
 
   const isPerson = draft.subjectType === SubjectType.Person;
 
+  // Only offered on an existing timeline; there is nothing to fit a new one to.
   const fitToEpisodes = () => {
-    const { floor, ceiling } = deriveWindow(timeline.episodes.map(toLayoutEpisode), today);
-    const anyOngoing = timeline.episodes.some(episode => episode.indefinite);
+    if (mode.kind !== 'edit') return;
+
+    const { floor, ceiling } = deriveWindow(mode.timeline.episodes.map(toLayoutEpisode), today);
+    const anyOngoing = mode.timeline.episodes.some(episode => episode.indefinite);
 
     setDraft(current => ({
       ...current,
@@ -188,11 +253,21 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
     setSaving(true);
     setError(null);
 
-    const info = toTimelineInfo(timeline.timelineInfo, draft);
+    const nextInfo = toTimelineInfo(info, draft);
 
     try {
-      await api.updateTimelineInfo({ timelineId: timeline.timelineId, timelineInfo: info });
-      onSaved(info);
+      if (mode.kind === 'create') {
+        // The id is the server's to choose — it names the directory the timeline lives in —
+        // so the created timeline comes back rather than being reconstructed here.
+        onSaved(nextInfo, await api.createTimeline({ timelineInfo: nextInfo }));
+        return;
+      }
+
+      await api.updateTimelineInfo({
+        timelineId: mode.timeline.timelineId,
+        timelineInfo: nextInfo
+      });
+      onSaved(nextInfo);
     } catch (problem: unknown) {
       setError(problem instanceof Error ? problem.message : String(problem));
       setSaving(false);
@@ -203,7 +278,7 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
     <dialog ref={dialog} className="info-dialog" onClose={onClose} onCancel={onClose}>
       <form method="dialog" onSubmit={event => event.preventDefault()}>
         <header>
-          <h2>Timeline info</h2>
+          <h2>{creating ? 'New timeline' : 'Timeline info'}</h2>
           <button type="button" onClick={onClose} aria-label="Close">×</button>
         </header>
 
@@ -243,10 +318,13 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
           </label>
 
           {/* The bounds decide what is drawn, so there has to be a way to discover the
-              range the episodes actually occupy without reading the file. */}
-          <button type="button" className="link fit" onClick={fitToEpisodes}>
-            Fit to episodes
-          </button>
+              range the episodes actually occupy without reading the file. A timeline being
+              created has no episodes to fit to. */}
+          {!creating && (
+            <button type="button" className="link fit" onClick={fitToEpisodes}>
+              Fit to episodes
+            </button>
+          )}
         </div>
 
         <fieldset className="subject-type">
@@ -376,7 +454,7 @@ export function TimelineInfoDialog({ timeline, today, onSaved, onClose }: Props)
             disabled={saving || problem !== null}
             title={problem ?? undefined}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : creating ? 'Create' : 'Save'}
           </button>
         </footer>
       </form>

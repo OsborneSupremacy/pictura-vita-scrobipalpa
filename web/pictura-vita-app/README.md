@@ -24,11 +24,11 @@ npm --prefix web/pictura-vita-app run dev
 The app is then at http://127.0.0.1:5173. Calls to `/api/*` are proxied to
 `http://localhost:5199`; override with `API_ORIGIN` if the API runs elsewhere.
 
-The API reads its data file path from `src/Pictura.Vita.Api/.env` (see `.env.example`
-there). Note that `dotenv.net` **overwrites** real environment variables, so exporting
-`DATA_FILE_PATH` in your shell will not override what `.env` says — edit the file instead.
-A missing or wrong path fails at startup with an explicit message rather than quietly
-serving an empty timeline.
+The API reads its timelines directory from `src/Pictura.Vita.Api/.env` (see `.env.example`
+there). It is loaded with `overwriteExistingVars: false`, so a `TIMELINES_ROOT_PATH` already
+set in your shell **wins** over the file — which is how you point a run at throwaway data
+without editing it. An unset value, or a directory that does not exist, fails at startup with
+an explicit message rather than quietly serving an empty table of contents.
 
 ## Scripts
 

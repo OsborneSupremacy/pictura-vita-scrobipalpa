@@ -17,8 +17,12 @@ export function ProfileMenu({ today }: Props) {
 
     try {
       // Every timeline, not just the one being viewed: a backup that silently omits data
-      // is worse than no backup.
-      const timelines = await api.timelines();
+      // is worse than no backup. Each is fetched in full, one request apiece — the listing
+      // carries only summaries now, because the server would otherwise have to parse every
+      // timeline on disk just to draw a menu. An export is a deliberate act and can afford
+      // the round trips; drawing the index cannot.
+      const summaries = await api.timelines();
+      const timelines = await Promise.all(summaries.map(s => api.timeline(s.timelineId)));
       const text = serializeExport(buildExportPayload(timelines));
       const name = exportFileName(today);
 
@@ -55,8 +59,9 @@ export function ProfileMenu({ today }: Props) {
         </button>
 
         <p className="muted">
-          Downloads every timeline in the same format as the data file, so a backup can be
-          restored by pointing the API at it.
+          Downloads every timeline, whole, in one file. Images and narratives are separate
+          files on disk and are not in it — copying the timelines directory is the complete
+          backup.
         </p>
 
         {status.kind === 'done' && <p className="ok">Saved {status.name}</p>}

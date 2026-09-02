@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from './api/client';
 import type { ApiTimeline, ApiTimelineSummary } from './api/types';
 import { toDayNumber } from './layout';
+import { useHashRoute } from './hooks/useHashRoute';
+import { TimelineIndex } from './components/TimelineIndex';
 import { TimelineView } from './components/TimelineView';
 import { ProfileMenu } from './components/ProfileMenu';
 import { TimelineInfoDialog } from './components/TimelineInfoDialog';
@@ -14,12 +16,15 @@ import { CategoryDialog } from './components/CategoryDialog';
 const today = toDayNumber(new Date().toISOString().slice(0, 10));
 
 export default function App() {
+  const [route, navigate] = useHashRoute();
+
   const [summaries, setSummaries] = useState<ApiTimelineSummary[]>([]);
   const [timeline, setTimeline] = useState<ApiTimeline | null>(null);
   const [availableImages, setAvailableImages] = useState<readonly string[]>([]);
   const [availableNarratives, setAvailableNarratives] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [editingCategories, setEditingCategories] = useState(false);
 
   /**
@@ -30,7 +35,7 @@ export default function App() {
    * extras, and losing the whole timeline because one of them could not be read would be a
    * poor trade.
    */
-  const load = async (id: string) => {
+  const load = useCallback(async (id: string) => {
     const [loaded, images, narratives] = await Promise.all([
       api.timeline(id),
       api.timelineImages(id).catch(() => [] as string[]),
@@ -40,17 +45,38 @@ export default function App() {
     setTimeline(loaded);
     setAvailableImages(images);
     setAvailableNarratives(narratives);
-  };
-
-  useEffect(() => {
-    api
-      .timelineSummaries()
-      .then(async found => {
-        setSummaries(found);
-        if (found[0]) await load(found[0].timelineId);
-      })
-      .catch((problem: unknown) => setError(problem instanceof Error ? problem.message : String(problem)));
   }, []);
+
+  // Fetched each time the index is shown rather than once at start-up, so a title edited
+  // inside a timeline is right when you come back out, and a folder dropped into the
+  // timelines directory appears without a reload. It costs one request over summaries the
+  // server already has cached against each file's timestamp.
+  useEffect(() => {
+    if (route.kind !== 'index') return;
+
+    api
+      .timelines()
+      .then(setSummaries)
+      .catch((problem: unknown) =>
+        setError(problem instanceof Error ? problem.message : String(problem)));
+  }, [route.kind]);
+
+  // The URL decides which timeline is open, so a reload, a bookmark and the back button all
+  // land in the same place. Nothing is loaded until a timeline is actually asked for — the
+  // index page costs one request, not one per timeline.
+  useEffect(() => {
+    if (route.kind === 'index') {
+      setTimeline(null);
+      return;
+    }
+
+    // Not `timeline?.timelineId === route.timelineId`: the id is what identifies the request,
+    // and re-running the effect on a reload of the same timeline is the point of `reload`.
+    setError(null);
+
+    load(route.timelineId).catch((problem: unknown) =>
+      setError(problem instanceof Error ? problem.message : String(problem)));
+  }, [route, load]);
 
   /**
    * An upload adds a file to a directory the client cannot list for itself, so the server's
@@ -65,31 +91,29 @@ export default function App() {
     setAvailableNarratives(current =>
       current.includes(narrativeName) ? current : [...current, narrativeName].sort());
 
-  const select = async (id: string) => {
-    setError(null);
-    try {
-      await load(id);
-    } catch (problem: unknown) {
-      setError(problem instanceof Error ? problem.message : String(problem));
-    }
-  };
+  /** Re-reads the open timeline after a change the client cannot reconstruct locally. */
+  const reload = (id: string) =>
+    load(id).catch((problem: unknown) =>
+      setError(problem instanceof Error ? problem.message : String(problem)));
 
   return (
     <main>
       <header className="app-header">
-        <h1>Pictura Vita</h1>
-        {summaries.length > 1 && (
-          <select
-            value={timeline?.timelineId ?? ''}
-            onChange={event => void select(event.target.value)}
-          >
-            {summaries.map(summary => (
-              <option key={summary.timelineId} value={summary.timelineId}>
-                {summary.title}
-              </option>
-            ))}
-          </select>
-        )}
+        <h1>
+          {route.kind === 'index' ? (
+            'Pictura Vita'
+          ) : (
+            <a
+              href="#/"
+              onClick={event => {
+                event.preventDefault();
+                navigate({ kind: 'index' });
+              }}
+            >
+              Pictura Vita
+            </a>
+          )}
+        </h1>
 
         <ProfileMenu today={today} />
       </header>
@@ -102,6 +126,24 @@ export default function App() {
             This app needs two processes: the API and this dev server.
           </span>
         </p>
+      )}
+
+      {route.kind === 'index' && !error && (
+        <TimelineIndex summaries={summaries} today={today} onCreate={() => setCreating(true)} />
+      )}
+
+      {creating && (
+        <TimelineInfoDialog
+          mode={{ kind: 'create' }}
+          today={today}
+          // Straight into the new timeline: it is empty, and the next thing anyone wants is
+          // to put a category in it.
+          onSaved={(_info, created) => {
+            setCreating(false);
+            if (created) navigate({ kind: 'timeline', timelineId: created.timelineId });
+          }}
+          onClose={() => setCreating(false)}
+        />
       )}
 
       {timeline && (
@@ -119,7 +161,7 @@ export default function App() {
 
           {editingInfo && (
             <TimelineInfoDialog
-              timeline={timeline}
+              mode={{ kind: 'edit', timeline }}
               today={today}
               onSaved={info => {
                 setTimeline({ ...timeline, timelineInfo: info });
@@ -136,7 +178,7 @@ export default function App() {
               // rather than trying to reconstruct the collection locally.
               onSaved={() => {
                 setEditingCategories(false);
-                void select(timeline.timelineId);
+                void reload(timeline.timelineId);
               }}
               onClose={() => setEditingCategories(false)}
             />
@@ -148,7 +190,7 @@ export default function App() {
             onImageAdded={addAvailableImage}
             availableNarratives={availableNarratives}
             onNarrativeAdded={addAvailableNarrative}
-            onChanged={() => void select(timeline.timelineId)}
+            onChanged={() => void reload(timeline.timelineId)}
           />
         </>
       )}

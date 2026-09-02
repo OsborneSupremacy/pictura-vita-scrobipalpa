@@ -2,14 +2,13 @@ using dotenv.net;
 using Microsoft.AspNetCore.Http.Features;
 using Pictura.Vita.Api.Images;
 using Pictura.Vita.Api.Narratives;
-using JsonFlatFileDataStore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pictura.Vita.Api.Validators;
 using Scalar.AspNetCore;
 
 // Do not clobber variables already set in the environment: an explicit value from the
-// shell must win over .env, or you cannot safely point this at a scratch file.
+// shell must win over .env, or you cannot safely point this at a scratch directory.
 DotEnv.Load(new DotEnvOptions(overwriteExistingVars: false));
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,9 +34,10 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 // property. With it, a request body carrying null for a non-nullable property is rejected as
 // it is read.
 //
-// Scope worth knowing: this reaches only the API's own reading and writing of JSON. The data
-// file is read and written by JsonFlatFileDataStore, which uses Newtonsoft.Json, and is not
-// affected by any System.Text.Json setting — nulls already sitting in a file still load.
+// The data file now gets the same treatment. It used to be read and written by
+// JsonFlatFileDataStore over Newtonsoft.Json, which no System.Text.Json setting could reach,
+// so a null already sitting in a file loaded silently. TimelineFileStore sets the same option
+// on its own serializer.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.RespectNullableAnnotations = true;
@@ -71,95 +71,231 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
+var timelinesRoot = Environment.GetEnvironmentVariable("TIMELINES_ROOT_PATH");
 
-// Fail loudly at startup rather than serving an empty store: a data file that is missing or
-// misconfigured otherwise looks identical to a timeline with nothing in it.
-if (string.IsNullOrWhiteSpace(dataFilePath))
+// Fail loudly at startup rather than serving an empty table of contents: a root that is
+// missing or misconfigured otherwise looks identical to having no timelines yet.
+if (string.IsNullOrWhiteSpace(timelinesRoot))
     throw new InvalidOperationException(
-        "DATA_FILE_PATH is not set. Copy .env.example to .env in the API project and point "
-        + "DATA_FILE_PATH at your timeline JSON file.");
+        "TIMELINES_ROOT_PATH is not set. Copy .env.example to .env in the API project and "
+        + "point TIMELINES_ROOT_PATH at the directory holding your timelines.");
 
-if (!File.Exists(dataFilePath))
+if (!Directory.Exists(timelinesRoot))
     throw new InvalidOperationException(
-        $"DATA_FILE_PATH points at \"{dataFilePath}\", which does not exist. Check the path in "
-        + "the API project's .env file, or run the Excel importer to generate it.");
+        $"TIMELINES_ROOT_PATH points at \"{timelinesRoot}\", which does not exist. Check the "
+        + "path in the API project's .env file, or create the directory — an empty one is a "
+        + "perfectly good starting point.");
 
-// Images are optional, so unlike the data file a missing root is not fatal — but it is
-// logged, because "no images anywhere" and "IMAGE_ROOT_PATH is mistyped" otherwise look
-// exactly the same from the outside.
-var imageStore = ImageStore.Create(dataFilePath);
-
-// Narratives sit beside the images, derived from the same data file path, and are optional
-// in exactly the same way.
-var narrativeStore = NarrativeStore.Create(dataFilePath);
-
-var dataStore = new DataStore(dataFilePath);
-var timelineProvider = new TimelineProvider(dataStore);
+// A timeline is one directory named for its id, holding data.v1.json, images/ and narratives/.
+// All three stores are handed the same root and derive their paths from the timeline id, which
+// is what keeps a timeline one portable folder rather than three configurable ones.
+var timelineStore = new TimelineFileStore(timelinesRoot, app.Logger);
+var timelineProvider = new TimelineProvider(timelineStore);
 var randomTimelineProvider = new RandomTimelineProvider();
+var imageStore = ImageStore.Create(timelinesRoot);
+var narrativeStore = NarrativeStore.Create(timelinesRoot);
 
 // timeline endpoints
-app.MapGet("/timelinesummaries", async () =>
-    {
-        var summaries = await timelineProvider.GetAllSummariesAsync();
-        return Results.Ok(summaries);
-    })
-    .WithDisplayName("Get all timeline summaries")
-    .Produces<IEnumerable<TimelineSummary>>();
 
-app.MapGet("/timelines", async () => await timelineProvider.GetAllAsync())
-    .WithDisplayName("Get all timelines")
-    .Produces<IEnumerable<Timeline>>();
+// The CancellationToken is bound by the framework to HttpContext.RequestAborted, so a browser
+// that navigates away mid-listing stops the server reading the rest of the timeline files.
+app.MapGet("/timelines", async (CancellationToken cancellationToken) =>
+        Results.Ok(await timelineProvider.GetAllSummariesAsync(cancellationToken)))
+    .WithDisplayName("List every timeline")
+    .Produces<IReadOnlyList<TimelineSummary>>();
 
-app.MapGet("/timelines/random", () =>
-    {
-        var timeline = randomTimelineProvider.Generate();
-        List<Timeline> timelines = [ timeline ];
-        return Results.Ok(timelines);
-    })
-    .WithDisplayName("Get random timelines")
-    .Produces<IEnumerable<Timeline>>();
+app.MapGet("/timelines/random", () => Results.Ok(randomTimelineProvider.Generate()))
+    .WithDisplayName("Get a random timeline")
+    .Produces<Timeline>();
 
-app.MapGet("/timeline/{id:guid}", async ([FromRoute]Guid id) =>
+app.MapPost("/timelines", async (
+        [FromServices] CreateTimelineRequestValidator validator,
+        [FromBody] CreateTimelineRequest request,
+        CancellationToken cancellationToken) =>
     {
-        var timeline = await timelineProvider.GetAsync(id);
-        return timeline is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Ok(timeline.Value);
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+
+        if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+        var created = await timelineProvider.CreateAsync(request);
+
+        return created.IsSuccess
+            ? Results.Created($"/timelines/{created.Value.TimelineId}", created.Value)
+            : Faulted(created.Exception);
     })
+    .WithDisplayName("Create a new timeline")
+    .Produces<Timeline>(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest);
+
+app.MapGet("/timelines/{timelineId:guid}", async (
+        [FromRoute] Guid timelineId,
+        CancellationToken cancellationToken) =>
+        Ok(await timelineProvider.GetAsync(timelineId, cancellationToken)))
     .WithDisplayName("Get a timeline by ID")
     .Produces<Timeline>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapGet("/timeline/random", () =>
-    {
-        var timeline = randomTimelineProvider.Generate();
-        return Results.Ok(timeline);
-    })
-    .WithDisplayName("Get a random timeline")
-    .Produces<Timeline>();
-
 // Takes only the information being changed. It previously accepted a whole Timeline, which
 // meant sending every episode back to the server to rename the subject.
-app.MapPut("/timeline", async (
-        [FromServices]UpdateTimelineInfoRequestValidator validator,
-        [FromBody]UpdateTimelineInfoRequest request
-        ) =>
+app.MapPut("/timelines/{timelineId:guid}/info", async (
+        [FromRoute] Guid timelineId,
+        [FromServices] UpdateTimelineInfoRequestValidator validator,
+        [FromBody] UpdateTimelineInfoRequest request,
+        CancellationToken cancellationToken) =>
     {
-        var validationResult = await validator.ValidateAsync(request);
+        if (Mismatched(timelineId, request.TimelineId) is { } mismatch) return mismatch;
 
-        if (!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
+        var validation = await validator.ValidateAsync(request, cancellationToken);
 
-        var updateResult = await timelineProvider.UpdateTimelineInfoAsync(request);
-
-        return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.NoContent();
+        return validation.IsValid
+            ? NoContent(await timelineProvider.UpdateTimelineInfoAsync(request, cancellationToken))
+            : Results.ValidationProblem(validation.ToDictionary());
     })
     .WithDisplayName("Update a timeline's information")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+// category endpoints
+
+app.MapGet("/timelines/{timelineId:guid}/categories", async (
+        [FromRoute] Guid timelineId,
+        CancellationToken cancellationToken) =>
+        Ok(await timelineProvider.GetCategoriesAsync(timelineId, cancellationToken)))
+    .WithDisplayName("Get all categories for a timeline")
+    .Produces<IEnumerable<Category>>()
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapGet("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid categoryId,
+        CancellationToken cancellationToken) =>
+        Ok(await timelineProvider.GetCategoryAsync(timelineId, categoryId, cancellationToken)))
+    .WithDisplayName("Get a category by ID")
+    .Produces<Category>()
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPost("/timelines/{timelineId:guid}/categories", async (
+        [FromRoute] Guid timelineId,
+        [FromServices] InsertCategoryRequestValidator validator,
+        [FromBody] InsertCategoryRequest request,
+        CancellationToken cancellationToken) =>
+    {
+        if (Mismatched(timelineId, request.TimelineId) is { } mismatch) return mismatch;
+
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+
+        if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+        var created = await timelineProvider.InsertCategoryAsync(request, cancellationToken);
+
+        return created.IsSuccess
+            ? Results.Created(
+                $"/timelines/{timelineId}/categories/{created.Value.CategoryId}", created.Value)
+            : Faulted(created.Exception);
+    })
+    .WithDisplayName("Create a new category")
+    .Produces<Category>(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPut("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid categoryId,
+        [FromServices] UpdateCategoryRequestValidator validator,
+        [FromBody] UpdateCategoryRequest request,
+        CancellationToken cancellationToken) =>
+    {
+        if (Mismatched(timelineId, request.TimelineId) is { } mismatch) return mismatch;
+        if (Mismatched(categoryId, request.Category.CategoryId) is { } wrongCategory)
+            return wrongCategory;
+
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+
+        return validation.IsValid
+            ? NoContent(await timelineProvider.UpdateCategoryAsync(request, cancellationToken))
+            : Results.ValidationProblem(validation.ToDictionary());
+    })
+    .WithDisplayName("Update a category")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapDelete("/timelines/{timelineId:guid}/categories/{categoryId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid categoryId,
+        CancellationToken cancellationToken) =>
+        NoContent(await timelineProvider.DeleteCategoryAsync(
+            timelineId, categoryId, cancellationToken)))
+    .WithDisplayName("Delete a category")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
+
+// episode endpoints
+
+app.MapGet("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid episodeId,
+        CancellationToken cancellationToken) =>
+        Ok(await timelineProvider.GetEpisodeAsync(timelineId, episodeId, cancellationToken)))
+    .WithDisplayName("Get an episode by ID")
+    .Produces<Episode>()
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPost("/timelines/{timelineId:guid}/episodes", async (
+        [FromRoute] Guid timelineId,
+        [FromServices] InsertEpisodeRequestValidator validator,
+        [FromBody] InsertEpisodeRequest request,
+        CancellationToken cancellationToken) =>
+    {
+        if (Mismatched(timelineId, request.TimelineId) is { } mismatch) return mismatch;
+
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+
+        if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+        var created = await timelineProvider.InsertEpisodeAsync(request, cancellationToken);
+
+        return created.IsSuccess
+            ? Results.Created(
+                $"/timelines/{timelineId}/episodes/{created.Value.EpisodeId}", created.Value)
+            : Faulted(created.Exception);
+    })
+    .WithDisplayName("Create a new episode")
+    .Produces<Episode>(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPut("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid episodeId,
+        [FromServices] UpdateEpisodeRequestValidator validator,
+        [FromBody] UpdateEpisodeRequest request,
+        CancellationToken cancellationToken) =>
+    {
+        if (Mismatched(timelineId, request.TimelineId) is { } mismatch) return mismatch;
+        if (Mismatched(episodeId, request.Episode.EpisodeId) is { } wrongEpisode)
+            return wrongEpisode;
+
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+
+        return validation.IsValid
+            ? NoContent(await timelineProvider.UpdateEpisodeAsync(request, cancellationToken))
+            : Results.ValidationProblem(validation.ToDictionary());
+    })
+    .WithDisplayName("Update an episode")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status400BadRequest)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapDelete("/timelines/{timelineId:guid}/episodes/{episodeId:guid}", async (
+        [FromRoute] Guid timelineId,
+        [FromRoute] Guid episodeId,
+        CancellationToken cancellationToken) =>
+        NoContent(await timelineProvider.DeleteEpisodeAsync(
+            timelineId, episodeId, cancellationToken)))
+    .WithDisplayName("Delete an episode")
+    .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
 // image endpoints
@@ -169,13 +305,13 @@ app.MapPut("/timeline", async (
 // on loopback that any page open in the browser can reach, and the file name it is asked for
 // came out of a data file.
 
-app.MapGet("/timeline/{id:guid}/images", ([FromRoute]Guid id) =>
-        Results.Ok(imageStore.List(id)))
+app.MapGet("/timelines/{timelineId:guid}/images", ([FromRoute] Guid timelineId) =>
+        Results.Ok(imageStore.List(timelineId)))
     .WithDisplayName("Get the image file names present for a timeline")
     .Produces<IEnumerable<string>>();
 
-app.MapPost("/timeline/{id:guid}/image", async (
-        [FromRoute]Guid id,
+app.MapPost("/timelines/{timelineId:guid}/images", async (
+        [FromRoute] Guid timelineId,
         HttpRequest request) =>
     {
         if (!request.HasFormContentType)
@@ -203,10 +339,11 @@ app.MapPost("/timeline/{id:guid}/image", async (
             ? supplied
             : Path.GetFileNameWithoutExtension(file.FileName);
 
-        var saved = imageStore.Save(id, buffer.ToArray(), stem, app.Logger);
+        var saved = imageStore.Save(timelineId, buffer.ToArray(), stem, app.Logger);
 
         return saved.IsSuccess
-            ? Results.Created($"/timeline/{id}/image/{saved.Value}", new { imageName = saved.Value })
+            ? Results.Created(
+                $"/timelines/{timelineId}/images/{saved.Value}", new { imageName = saved.Value })
             : Results.BadRequest(new { error = saved.Exception.Message });
     })
     .WithDisplayName("Upload an episode image")
@@ -214,20 +351,20 @@ app.MapPost("/timeline/{id:guid}/image", async (
     .Produces(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest);
 
-app.MapGet("/timeline/{id:guid}/image/{name}", (
-        [FromRoute]Guid id,
-        [FromRoute]string name,
-        [FromQuery]string? size) =>
+app.MapGet("/timelines/{timelineId:guid}/images/{name}", (
+        [FromRoute] Guid timelineId,
+        [FromRoute] string name,
+        [FromQuery] string? size) =>
     {
         var wantsThumbnail = string.Equals(size, "thumb", StringComparison.OrdinalIgnoreCase);
 
         var file = wantsThumbnail
-            ? imageStore.Thumbnail(id, name, app.Logger)
-            : imageStore.Find(id, name);
+            ? imageStore.Thumbnail(timelineId, name, app.Logger)
+            : imageStore.Find(timelineId, name);
 
-        // Every way this can fail — no root, an unsafe name, a name escaping the root, a
-        // missing file, bytes that will not decode — answers the same 404, so probing says
-        // nothing about what exists outside the sandbox.
+        // Every way this can fail — no directory, an unsafe name, a name escaping the
+        // timeline's own folder, a missing file, bytes that will not decode — answers the same
+        // 404, so probing says nothing about what exists outside the sandbox.
         if (file is null) return Results.NotFound();
 
         // Passing lastModified is what makes this a conditional request: without it the
@@ -248,16 +385,16 @@ app.MapGet("/timeline/{id:guid}/image/{name}", (
 // docs/narrative-support.md; served through the API for the same reason images are, so the
 // containment check that turns a name from a data file into a path lives in one place.
 
-app.MapGet("/timeline/{id:guid}/narratives", ([FromRoute]Guid id) =>
-        Results.Ok(narrativeStore.List(id)))
+app.MapGet("/timelines/{timelineId:guid}/narratives", ([FromRoute] Guid timelineId) =>
+        Results.Ok(narrativeStore.List(timelineId)))
     .WithDisplayName("Get the narrative file names present for a timeline")
     .Produces<IEnumerable<string>>();
 
-app.MapGet("/timeline/{id:guid}/narrative/{name}", (
-        [FromRoute]Guid id,
-        [FromRoute]string name) =>
+app.MapGet("/timelines/{timelineId:guid}/narratives/{name}", (
+        [FromRoute] Guid timelineId,
+        [FromRoute] string name) =>
     {
-        var text = narrativeStore.Read(id, name, app.Logger);
+        var text = narrativeStore.Read(timelineId, name, app.Logger);
 
         // As with images, every failure answers the same 404 so probing says nothing about
         // what exists outside the sandbox.
@@ -269,11 +406,15 @@ app.MapGet("/timeline/{id:guid}/narrative/{name}", (
     .Produces<string>()
     .Produces(StatusCodes.Status404NotFound);
 
-app.MapPut("/timeline/{id:guid}/narrative", async (
-        [FromRoute]Guid id,
-        [FromBody]SaveNarrativeRequest request) =>
+// The name stays in the body rather than the path, because on a first save there is no name
+// yet — the server generates one from the episode's title — and a PUT to a URL that cannot be
+// written down is worse than a body that explains itself.
+app.MapPut("/timelines/{timelineId:guid}/narratives", (
+        [FromRoute] Guid timelineId,
+        [FromBody] SaveNarrativeRequest request) =>
     {
-        var saved = narrativeStore.Save(id, request.Name, request.Stem, request.Text ?? string.Empty, app.Logger);
+        var saved = narrativeStore.Save(
+            timelineId, request.Name, request.Stem, request.Text ?? string.Empty, app.Logger);
 
         return saved.IsSuccess
             ? Results.Ok(new { narrativeName = saved.Value })
@@ -283,161 +424,42 @@ app.MapPut("/timeline/{id:guid}/narrative", async (
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status400BadRequest);
 
-// category endpoints
-
-app.MapGet("/categories/{id:guid}", async ([FromRoute]Guid id) =>
-    {
-        var categories = await timelineProvider.GetCategoriesAsync(id);
-
-        return categories is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Ok(categories.Value);
-    })
-    .WithDisplayName("Get all categories for a timeline")
-    .Produces<IEnumerable<Category>>()
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapGet("/category/{id:guid}", async ([FromRoute]Guid id) =>
-    {
-        var category = await timelineProvider.GetCategoryAsync(id);
-
-        return category is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Ok(category.Value);
-    })
-    .WithDisplayName("Get a category by ID")
-    .Produces<Category>()
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapPost("/category", async (
-        [FromServices]InsertCategoryRequestValidator validator,
-        [FromBody]InsertCategoryRequest request
-        ) =>
-    {
-        var validationResult = await validator.ValidateAsync(request);
-
-        if (!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
-
-        var newCategory = await timelineProvider.InsertCategoryAsync(request);
-
-        return newCategory is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Created($"/category/{newCategory.Value.CategoryId}", newCategory.Value);
-    })
-    .WithDisplayName("Create a new category")
-    .Produces(StatusCodes.Status201Created)
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapPut("/category", async (
-        [FromServices]UpdateCategoryRequestValidator validator,
-        [FromBody]UpdateCategoryRequest request
-        ) =>
-    {
-        var validationResult = await validator.ValidateAsync(request);
-        if (!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
-
-        var updateResult = await timelineProvider.UpdateCategoryAsync(request);
-
-        return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.NoContent();
-    })
-    .WithDisplayName("Update a category")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapDelete("/category/{id:guid}", async ([FromRoute]Guid id) =>
-    {
-        var deleteResult = await timelineProvider.DeleteCategoryAsync(id);
-
-        return deleteResult is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.NoContent();
-    })
-    .WithDisplayName("Delete a category")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
-
-// episode endpoints
-
-app.MapGet("/episodes/{id:guid}", async ([FromRoute]Guid id) =>
-    {
-        var episode = await timelineProvider.GetEpisodeAsync(id);
-
-        return episode is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Ok(episode.Value);
-    })
-    .WithDisplayName("Get an episode by ID")
-    .Produces<Episode>()
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapPost("/episode", async (
-        [FromServices]InsertEpisodeRequestValidator validator,
-        [FromBody]InsertEpisodeRequest request
-        ) =>
-    {
-        var validationResult = await validator.ValidateAsync(request);
-        if(!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
-
-        var newEpisode = await timelineProvider.InsertEpisodeAsync(request);
-
-        return newEpisode is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.Created($"/episodes/{newEpisode.Value.EpisodeId}", newEpisode.Value);
-    })
-    .WithDisplayName("Create a new episode")
-    .Produces(StatusCodes.Status201Created)
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapPut("/episode", async (
-        [FromServices]UpdateEpisodeRequestValidator validator,
-        [FromBody]UpdateEpisodeRequest request
-        ) =>
-    {
-        var validationResult = await validator.ValidateAsync(request);
-        if(!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
-
-        var updateResult = await timelineProvider.UpdateEpisodeAsync(request);
-
-        return updateResult is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.NoContent();
-    })
-    .WithDisplayName("Update an episode")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
-
-app.MapDelete("/episode/{id:guid}", async ([FromRoute]Guid id) =>
-    {
-        var deleteResult = await timelineProvider.DeleteEpisodeAsync(id);
-
-        return deleteResult is { IsFaulted: true, Exception: KeyNotFoundException }
-            ? Results.NotFound()
-            : Results.NoContent();
-    })
-    .WithDisplayName("Delete an episode")
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound);
-
 app.Logger.LogInformation(
-    "Image root: {Root}{Note}",
-    imageStore.Root,
-    imageStore.RootExists ? string.Empty : " (does not exist yet; the first upload creates it)");
-
-app.Logger.LogInformation(
-    "Narrative root: {Root}{Note}",
-    narrativeStore.Root,
-    narrativeStore.RootExists ? string.Empty : " (does not exist yet; the first save creates it)");
+    "Timelines root: {Root} ({Count} timeline(s))", timelineStore.Root, timelineStore.Ids().Count);
 
 app.Run();
+
+// Every provider call comes back as a Result carrying either the value or the exception that
+// explains why there is not one. Mapping those to status codes in one place is what keeps a
+// data file that is present but wrong from surfacing as a bare 500 with an empty body — a
+// caller told "not found" would reasonably go on to overwrite it.
+static IResult Faulted(Exception exception) => exception switch
+{
+    KeyNotFoundException => Results.NotFound(),
+    InvalidDataException => Results.Problem(
+        exception.Message,
+        title: "That timeline's file on disk is not valid",
+        statusCode: StatusCodes.Status500InternalServerError),
+    _ => Results.Problem(
+        exception.Message, statusCode: StatusCodes.Status500InternalServerError)
+};
+
+static IResult Ok<T>(Pictura.Vita.Utility.Result<T> result) =>
+    result.IsSuccess ? Results.Ok(result.Value) : Faulted(result.Exception);
+
+static IResult NoContent(Pictura.Vita.Utility.Result result) =>
+    result.IsSuccess ? Results.NoContent() : Faulted(result.Exception);
+
+// Guards a request body that repeats an id already in the route. Now that each timeline is
+// its own directory, a body naming a different timeline than the URL would write to a file the
+// caller did not ask for. Answering 400 makes that a mistake rather than a silent one.
+static IResult? Mismatched(Guid fromRoute, Guid fromBody) =>
+    fromRoute == fromBody
+        ? null
+        : Results.BadRequest(new
+        {
+            error = $"The URL names {fromRoute} but the body names {fromBody}."
+        });
 
 /// <summary>
 /// Body of a narrative save.
@@ -456,4 +478,3 @@ internal sealed record SaveNarrativeRequest
 
     public string? Text { get; init; }
 }
-

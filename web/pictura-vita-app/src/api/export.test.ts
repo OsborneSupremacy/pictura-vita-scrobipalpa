@@ -22,18 +22,18 @@ describe('exportFileName', () => {
 });
 
 describe('buildExportPayload', () => {
-  it('wraps the timelines in the collection the data file uses', () => {
+  it('gathers the timelines into one array the migration tool can read back', () => {
     const payload = buildExportPayload([timeline('a'), timeline('b')]);
-    expect(Object.keys(payload)).toEqual(['timeline']);
-    expect(payload.timeline.map(t => t.timelineId)).toEqual(['a', 'b']);
+    expect(Object.keys(payload)).toEqual(['timelines']);
+    expect(payload.timelines.map(t => t.timelineId)).toEqual(['a', 'b']);
   });
 
   it('exports every timeline, not just the one on screen', () => {
-    expect(buildExportPayload([timeline('a'), timeline('b'), timeline('c')]).timeline).toHaveLength(3);
+    expect(buildExportPayload([timeline('a'), timeline('b'), timeline('c')]).timelines).toHaveLength(3);
   });
 
   it('produces a usable file even with no timelines', () => {
-    expect(buildExportPayload([])).toEqual({ timeline: [] });
+    expect(buildExportPayload([])).toEqual({ timelines: [] });
   });
 });
 
@@ -43,9 +43,9 @@ describe('serializeExport', () => {
     expect(JSON.parse(serializeExport(payload))).toEqual(payload);
   });
 
-  it('is indented and newline-terminated, like the store writes it', () => {
+  it('is indented and newline-terminated, so backups diff cleanly', () => {
     const text = serializeExport(buildExportPayload([timeline('a')]));
-    expect(text.startsWith('{\n  "timeline"')).toBe(true);
+    expect(text.startsWith('{\n  "timelines"')).toBe(true);
     expect(text.endsWith('}\n')).toBe(true);
   });
 });

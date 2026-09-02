@@ -457,7 +457,7 @@ export function EpisodeDialog({
     setError(null);
 
     try {
-      await api.deleteEpisode(mode.episode.episodeId);
+      await api.deleteEpisode(timeline.timelineId, mode.episode.episodeId);
       onChanged();
     } catch (problemDeleting: unknown) {
       setError(problemDeleting instanceof Error ? problemDeleting.message : String(problemDeleting));

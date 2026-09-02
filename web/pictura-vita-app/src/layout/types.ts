@@ -78,7 +78,7 @@ export interface LayoutInput {
   /** Categories to draw. Null draws all of them. */
   visibleCategoryIds: ReadonlySet<string> | null;
   /**
-   * Image file names known to exist on disk, from `GET /timeline/{id}/images`.
+   * Image file names known to exist on disk, from `GET /timelines/{id}/images`.
    *
    * Omitting it means none are known, so nothing draws a thumbnail. That is the safe
    * default: a name in the store is a claim about a filesystem this module cannot see, and

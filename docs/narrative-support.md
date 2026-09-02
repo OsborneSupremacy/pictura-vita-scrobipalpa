@@ -8,8 +8,8 @@ in the detail panel. An episode can have both, either, or neither.
 
 ## Why a file and not a field
 
-The store holds a **filename**; the text lives on disk beside the data file. The reasons are
-not the same as the ones for images, and are worth stating.
+The store holds a **filename**; the text lives on disk in the timeline's own folder. The
+reasons are not the same as the ones for images, and are worth stating.
 
 A JSON field holds prose as one escaped line. That makes `git diff` on a backup useless,
 rewrites the entire timeline file on every keystroke-save, and puts a thousand words of
@@ -18,29 +18,27 @@ user actually writes in — Obsidian, iA Writer, vim — and can be grepped. It 
 JSON file the size it is meant to be: a record of dates and titles.
 
 ```
-<data dir>/
-  timeline-data.json                     source of truth (see data-store.md)
-  images/
-    {timelineId}/…
-  narratives/
-    {timelineId}/
-      moving-to-kalamazoo.md             written by the app, or dropped in by hand
+<timelines root>/
+  {timelineId}/
+    data.v1.json                       source of truth (see data-store.md)
+    images/…
+    narratives/
+      moving-to-kalamazoo.md           written by the app, or dropped in by hand
       the-speeding-ticket-on-i-94.md
 ```
 
 The whole timeline — the JSON, its pictures and its prose — stays one directory you can
 move, back up, or hand to someone.
 
-## Resolution order
+## Resolution
 
-Identical to images, and derived for the same reason:
+`<TIMELINES_ROOT_PATH>/{timelineId}/narratives`, and nothing else — identical to images, and
+with no override for the same reason: a separately configured path could only point somewhere
+that breaks the one-folder claim. The old `NARRATIVE_ROOT_PATH` escape hatch went with the
+re-rooting on 2026-09-02.
 
-1. `NARRATIVE_ROOT_PATH`, if set — the escape hatch.
-2. Otherwise `<directory of DATA_FILE_PATH>/narratives`.
-
-Two independently configured paths drift apart, and then "portable" quietly stops being
-true. A missing root is not a startup failure: narratives are optional, and an episode
-without one is an ordinary episode.
+A missing folder is not a startup failure: narratives are optional, and an episode without one
+is an ordinary episode.
 
 ## Naming
 
@@ -75,12 +73,14 @@ everything else in the application has a second copy in the JSON store.
 
 ## Endpoints
 
-- `GET /timeline/{id}/narratives` — the names present on disk. Fetched with the timeline, so
+- `GET /timelines/{id}/narratives` — the names present on disk. Fetched with the timeline, so
   the detail panel knows whether to offer "Read narrative" *before* it draws. A button that
   turns out to open nothing is worse than no button.
-- `GET /timeline/{id}/narrative/{name}` — the Markdown, as `text/markdown`.
-- `PUT /timeline/{id}/narrative` — `{ name, stem, text }`, answers `{ narrativeName }`.
-  Empty `name` means "generate one from `stem`".
+- `GET /timelines/{id}/narratives/{name}` — the Markdown, as `text/markdown`.
+- `PUT /timelines/{id}/narratives` — `{ name, stem, text }`, answers `{ narrativeName }`.
+  Empty `name` means "generate one from `stem`". The name stays in the body rather than the
+  path because on a first save there is not one yet, and a PUT to a URL that cannot be written
+  down is worse than a body that explains itself.
 
 Every read failure — an unsafe name, a name escaping the root, a missing file, bytes that
 cannot be fetched — answers the same **404**, so probing says nothing about what exists
@@ -110,7 +110,7 @@ produced to sanitize:
   nothing leaves the machine, and a leak of *which episode is being read, and when*, to
   whoever serves it. Anything else renders as its alt text.
 
-  The name is also checked against `GET /timeline/{id}/images` before an `<img>` is emitted
+  The name is also checked against `GET /timelines/{id}/images` before an `<img>` is emitted
   at all — the rule the layout and the detail panel already follow — so a stale reference
   draws as alt text rather than a broken-image glyph in an empty frame.
 
@@ -157,32 +157,37 @@ app never deletes a narrative; the folder is the user's.
 
 `Episode.NarrativeName` — a `required string`, empty for none, mirroring `ImageName`.
 
-The validator requires it — `NotNull()`, matching the type. Newtonsoft ignores C#'s
-`required`, so null is representable at runtime whatever the record says, and the validator
-is where that gap is closed. **The project's standing preference is to keep properties
-non-nullable and make the data match, rather than let null in and handle it everywhere.**
+The validator requires it — `NotNull()`, matching the type. **The project's standing
+preference is to keep properties non-nullable and make the data match, rather than let null in
+and handle it everywhere.** When this was written, Newtonsoft ignored C#'s `required` and null
+was representable at runtime whatever the record said, so the validator was the only place that
+gap was closed; since `TimelineFileStore` replaced JsonFlatFileDataStore on 2026-09-02 the read
+path is strict too, and a file carrying a null in a non-nullable property is refused with a
+message naming it.
 
 That is only affordable because both data files were brought up to the new key shape on
 2026-08-30, before the rule was tightened:
 
 - the real data file — `"narrativeName": ""` inserted after `imageName` in all 143 episodes
-- `Pictura.Vita.Data/test/sample-01.json` — `imageName` *and* `narrativeName` added to all 47
+- the sample timeline (then `Pictura.Vita.Data/test/sample-01.json`, now
+  `test/timelines/{id}/data.v1.json`) — `imageName` *and* `narrativeName` added to all 47
   episodes, which also fixed a pre-existing bug: the sample carried no `imageName` at all, so
   `ImageName`'s own `NotNull()` made every episode in it unsaveable with a 400
 
 Both edits were text insertions rather than JSON round trips, so each diff is added lines and
 nothing else.
 
-**This closes the write path only.** A file edited by hand, or an old backup restored, still
-deserializes a missing property as null and hands it to the client on `GET` — nothing
-validates a read. The `?? ''` coercions in `api/adapter.ts`, `EpisodeDialog` and
-`CategoryDialog` remain load-bearing for exactly that case, and should not be removed on the
-strength of the validator.
+**A missing property and a null property are now different things.** A file that omits
+`narrativeName` entirely fails the read with "missing required properties", which is the
+honest answer; one that carries an explicit `null` fails too. Neither reaches the client. The
+`?? ''` coercions in `api/adapter.ts`, `EpisodeDialog` and `CategoryDialog` are cheap and stay,
+but they are no longer the only thing standing between an old file and a crash.
 
 If this application is ever distributed and has to stay backwards-compatible with files it
 did not write, that is the point at which a newly added property has to become genuinely
-nullable. Until then the data is under this project's control and can simply be kept in
-shape.
+nullable — or, more likely, the point at which `data.v1.json` becomes `data.v2.json` and a
+migration reads the one and writes the other. Until then the data is under this project's
+control and can simply be kept in shape.
 
 `SourceReaderService` reads no narrative column and never will — the workbook is history
 (see `data-store.md`), so `TransformerService` writes `NarrativeName` as empty.
@@ -193,5 +198,6 @@ shape.
 - Nothing in the layout module. Unlike an image, a narrative has no rendered width and no
   threshold; the timeline bars are unchanged.
 - No delete. Unlinking is reversible and deleting is not, and the folder is a folder.
-- Export still covers the JSON only, as it did for images. The narratives directory is
-  copied the way the images directory is: by copying the timeline's folder.
+- Export still covers the JSON only, as it did for images. The narratives folder is copied the
+  way the images folder is: by copying the timeline's folder, which is now the whole backup
+  story (see `data-store.md`).

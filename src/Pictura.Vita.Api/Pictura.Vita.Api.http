@@ -1,11 +1,30 @@
 @HostAddress = https://localhost:7105
 
+### The table of contents: one summary per timeline folder found under TIMELINES_ROOT_PATH.
 GET {{HostAddress}}/timelines
 Accept: application/json
 
 ###
 
-@TimelineId = 0194ba6e-394c-78e7-841b-5f89daee9d2d
+@TimelineId = 01979e65-0ab5-7a48-85d5-968f1be9f671
 
-GET {{HostAddress}}/timeline/{{TimelineId}}
+### One timeline, whole.
+GET {{HostAddress}}/timelines/{{TimelineId}}
+Accept: application/json
 
+###
+
+### What is actually in that timeline's images/ folder.
+GET {{HostAddress}}/timelines/{{TimelineId}}/images
+Accept: application/json
+
+###
+
+### And its narratives/ folder.
+GET {{HostAddress}}/timelines/{{TimelineId}}/narratives
+Accept: application/json
+
+###
+
+GET {{HostAddress}}/timelines/{{TimelineId}}/categories
+Accept: application/json

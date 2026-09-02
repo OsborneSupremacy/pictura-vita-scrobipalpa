@@ -10,20 +10,20 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
 
-      # Inside the container the timeline always lives at /data, whatever directory the host
-      # mounted there. The API derives the image and narrative roots from this path, so all
-      # three stay in the one folder that gets mounted — which is what keeps a timeline
-      # portable rather than scattered across three separately configured paths.
-      DATA_FILE_PATH: /data/${PICTURA_VITA_DATA_FILE:-timeline-data.json}
+      # Inside the container the timelines always live at /timelines, whatever directory the
+      # host mounted there. Each timeline is one folder in here — data.v1.json, images/ and
+      # narratives/ together — which is what makes a timeline portable rather than scattered
+      # across three separately configured paths.
+      TIMELINES_ROOT_PATH: /timelines
 
       # Thumbnails are derived and disposable, but regenerating every one of them on each
       # `compose up` is a slow first paint for no reason, so they get a named volume rather
       # than the container's own filesystem. Deleting it is always safe.
       IMAGE_CACHE_PATH: /var/cache/pictura-vita/thumbnails
     volumes:
-      # Read-write: the JSON file is edited in place by the app, and uploads and narratives
-      # are written beside it.
-      - ${PICTURA_VITA_DATA_DIR:-./data}:/data
+      # Read-write: each timeline's data.v1.json is edited in place by the app, and uploads
+      # and narratives are written into that timeline's own folder.
+      - ${PICTURA_VITA_TIMELINES_DIR:-./data}:/timelines
       - thumbnails:/var/cache/pictura-vita/thumbnails
     ports:
       # Same port as `dotnet run` publishes, so the API answers where the docs, the .http

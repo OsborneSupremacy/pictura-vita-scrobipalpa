@@ -57,11 +57,11 @@ A complete personal timeline is **identity-verification-grade data**. Past addre
 
 So:
 
-- The data file lives outside the repository, on the user's own disk (path in a gitignored `.env`). Only fabricated sample data is committed.
+- The timelines live outside the repository, on the user's own disk (path in a gitignored `.env`). Only fabricated sample data is committed.
 - The API binds to loopback. The front end is a static SPA served by Vite on `127.0.0.1`, which proxies `/api/*` so the browser stays same-origin and the API needs no CORS policy at all.
 - There are **no outbound calls**. Deliberately, there is no fetch-an-image-from-a-URL feature: it would make the API issue requests to addresses a page supplied, and it would be the first outbound connection in a design whose premise is that nothing leaves the machine. A picture in a narrative resolves only to the timeline's own image folder for the same reason — a remote `src` would be fetched the moment the narrative was opened, leaking which episode is being read, and when.
 - Uploaded images are decoded and re-encoded rather than copied, which strips EXIF. A phone writes GPS coordinates into every photo, so a picture of a house you lived in carries that address in its metadata — exactly the data being kept off the network in the first place.
-- Export produces a file byte-compatible with the store's own format. The data belongs to whoever entered it and must be retrievable in a form that is useful without this application.
+- Export produces one plain JSON file holding every timeline whole. The data belongs to whoever entered it and must be retrievable in a form that is useful without this application.
 
 Hosting is not ruled out forever, but only in a shape where real timeline data still never reaches a server.
 
@@ -69,13 +69,27 @@ Hosting is not ruled out forever, but only in a shape where real timeline data s
 
 ## How the data is stored
 
-A single JSON file, `timeline-data.json`, read and written in place by the API. `Episodes`, `Categories` and `TimelineInfo` all live in it, and it is the **source of truth**.
+**A timeline is a folder.** It is named for the timeline's id, and everything belonging to that timeline is inside it:
 
-Images sit beside it in an `images/<timeline id>/` directory derived from the data file's own path, and long-form **narratives** — the Markdown account of an episode, written in the app or in your own editor — sit beside those in `narratives/<timeline id>/`. So a timeline is one portable folder — the JSON, its pictures and its prose together — that you can move, back up, or hand to someone. Only the file *name* is stored in either case; thumbnails are derived data, cached elsewhere and disposable.
+```
+timelines/
+  01979e65-0ab5-7a48-85d5-968f1be9f671/
+    data.v1.json      the episodes, the categories, the timeline info — the source of truth
+    images/           the episode pictures
+    narratives/       the long-form Markdown account of an episode
+  0197a1c3-…/
+    …
+```
+
+Copy that folder and you have copied the timeline entire — the dates, the pictures and the writing. Delete it and nothing else is touched. Hand it to someone and they have all of it. `TIMELINES_ROOT_PATH` points at the directory holding them, the app's first page lists whatever it finds there, and a folder dropped in by hand appears with nothing to register it with: there is no index file, deliberately, because an index is a second source of truth and the first thing to go stale.
+
+Only the file *name* is stored for a picture or a narrative; thumbnails are derived data, cached outside the folder and disposable.
 
 Prose is a file rather than a JSON field for reasons that are not the reasons images are: a thousand words in an escaped JSON string makes a backup's diff useless, rewrites the whole timeline file on every save, and sits somewhere no editor can open it.
 
-**The spreadsheet is history.** Until 2026-08-30 the Excel workbook was authoritative and the JSON was regenerated from it by `Pictura.Vita.Excel.Importer`. That reversed when editing moved into the app: the workbook has no column for image names, category icons and colours, or confidentiality, so keeping it authoritative would mean losing all of that on every import. The importer still builds, but running it against the real data file is now **destructive** — it replaces the timeline it previously wrote. Treat it as a one-off migration tool that has already done its job. Details, and the escape hatch if it is ever needed again, are in [docs/data-store.md](docs/data-store.md).
+Until 2026-09-02 there was instead a single `timeline-data.json` holding every timeline at once, with `images/` and `narratives/` beside it keyed by timeline id — so "one portable folder" was a claim the layout did not actually support. `Pictura.Vita.Migration` converts one to the other, non-destructively; see [docs/data-store.md](docs/data-store.md).
+
+**The spreadsheet is history.** Until 2026-08-30 the Excel workbook was authoritative and the JSON was regenerated from it by `Pictura.Vita.Excel.Importer`. That reversed when editing moved into the app: the workbook has no column for image names, category icons and colours, or confidentiality, so keeping it authoritative would mean losing all of that on every import. The importer still builds, but running it against your real timelines is now **destructive** — it replaces the timeline it previously wrote. Treat it as a one-off migration tool that has already done its job. Details, and the escape hatch if it is ever needed again, are in [docs/data-store.md](docs/data-store.md).
 
 ---
 
@@ -93,18 +107,18 @@ docker compose up --build
 
 The app is then at <http://127.0.0.1:5173>, proxying `/api/*` to the API container; the API itself is at <http://127.0.0.1:5199>, with its Scalar reference at <http://127.0.0.1:5199/scalar/v1>. Both ports are published on loopback only — nothing here is reachable from the network, which is the same boundary the app draws when run directly.
 
-**Your timeline stays on your machine.** The container gets a directory, mounted read-write at `/data`, and nothing else: the JSON file, its `images/` and its `narratives/` all live there, and the API derives the last two from the first, so a timeline remains one portable folder rather than three separately configured paths. Nothing is copied into the image, and deleting every container and volume leaves the directory untouched.
+**Your timelines stay on your machine.** The container gets a directory, mounted read-write at `/timelines`, and nothing else: each timeline's `data.v1.json`, its `images/` and its `narratives/` all live inside their own folder in there. Nothing is copied into the image, and deleting every container and volume leaves the directory untouched.
 
 Point it at your own data by copying `.env.example` (the one beside `compose.yaml`, not the API's) to `.env`:
 
 ```bash
-PICTURA_VITA_DATA_DIR=/path/to/my-timeline
+PICTURA_VITA_TIMELINES_DIR=/path/to/my-timelines
 ```
 
-Your real timeline is identity-grade data and belongs **outside** the working copy — see [Why the data never leaves the machine](#why-the-data-never-leaves-the-machine). The default, `./data`, is gitignored and is there for the sample:
+Your real timelines are identity-grade data and belong **outside** the working copy — see [Why the data never leaves the machine](#why-the-data-never-leaves-the-machine). The default, `./data`, is gitignored and is there for the sample:
 
 ```bash
-cp src/Pictura.Vita.Data/test/sample-01.json data/timeline-data.json
+cp -R src/Pictura.Vita.Data/test/timelines/* data/
 ```
 
 The front-end container runs the Vite dev server against the bind-mounted source, so editing a file on the host still hot-reloads the browser. Editing back-end code does not: rebuild with `docker compose up --build api`.
@@ -123,7 +137,7 @@ npm --prefix web/pictura-vita-app run dev
 
 Same addresses as above.
 
-Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `DATA_FILE_PATH`. Point it at the sample data in the build output to try it without any real data of your own. A missing or wrong path fails at startup with an explicit message rather than quietly serving an empty timeline. The API loads `.env` with `overwriteExistingVars: false`, so a value exported in your shell **wins** over the file — which is what makes `DATA_FILE_PATH=/tmp/scratch.json dotnet run …` a safe way to point a run at throwaway data without touching your `.env`. That is also how Compose configures the container, which is why the API's `.env` is deliberately kept out of the image.
+Before the first run, copy `src/Pictura.Vita.Api/.env.example` to `.env` and set `TIMELINES_ROOT_PATH`. Point it at `src/Pictura.Vita.Data/bin/Debug/net10.0/test/timelines` to try it on the sample data without any of your own — the build refreshes that copy every time, so writes never dirty the checked-in one. An unset value, or a directory that does not exist, fails at startup with an explicit message rather than quietly serving an empty table of contents; an *empty* directory is fine, and is what a first run looks like. The API loads `.env` with `overwriteExistingVars: false`, so a value exported in your shell **wins** over the file — which is what makes `TIMELINES_ROOT_PATH=/tmp/scratch dotnet run …` a safe way to point a run at throwaway data without touching your `.env`. That is also how Compose configures the container, which is why the API's `.env` is deliberately kept out of the image.
 
 Tests: `dotnet test src/Pictura.Vita.slnx` for the back end, `npm --prefix web/pictura-vita-app test` for the layout engine. Both run on the host; there is no container for them.
 
@@ -133,15 +147,16 @@ Tests: `dotnet test src/Pictura.Vita.slnx` for the back end, `npm --prefix web/p
 
 ```
 compose.yaml                      Both processes in containers (see "Running it")
-data/                             Default mount point for a timeline directory; gitignored
+data/                             Default mount point for the timelines directory; gitignored
 src/                              .NET solution
   Pictura.Vita.Domain/            Episode, Category, Timeline, TimelineInfo, the enums
   Pictura.Vita.Domain.Extensions/ Derived values (duration, display names) kept off the storage records
-  Pictura.Vita.Data/              JsonFlatFileDataStore provider; fabricated sample data
+  Pictura.Vita.Data/              TimelineFileStore (one folder per timeline); fabricated sample data
   Pictura.Vita.Api/               Minimal API, FluentValidation, image store and thumbnailer, narrative store
     Dockerfile                    Built from src/, which is the whole reference closure
   Pictura.Vita.Messaging/         Insert/update request contracts
   Pictura.Vita.Excel.Importer/    One-off spreadsheet migration (see the warning above)
+  Pictura.Vita.Migration/         One-off conversion from the old single-file store
   Pictura.Vita.Utility/           Deterministic GUIDs, Result<T>, date helpers
 web/pictura-vita-app/             React + Vite front end
   Dockerfile                      Runs the dev server against the bind-mounted source
@@ -162,7 +177,7 @@ Zoom recomputes client-side. v1 refetched from the server on every zoom; when la
 | Document | What it covers |
 | --- | --- |
 | [docs/original-version-spec.md](docs/original-version-spec.md) | v1's data model, stored-procedure contract and layout algorithm, reverse-engineered from the archive — including the bugs deliberately not reproduced |
-| [docs/data-store.md](docs/data-store.md) | Where the data lives, and why the importer is now retired |
+| [docs/data-store.md](docs/data-store.md) | One folder per timeline, how to migrate to it, and why the importer is now retired |
 | [docs/image-support.md](docs/image-support.md) | Image storage, EXIF stripping, thumbnail cache, path-traversal defences |
 | [docs/narrative-support.md](docs/narrative-support.md) | Markdown narratives: why a file and not a field, naming, and why the renderer needs no sanitizer |
 | [web/pictura-vita-app/README.md](web/pictura-vita-app/README.md) | Front-end scripts and the layout engine in detail |

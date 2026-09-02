@@ -1,3 +1,4 @@
+using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Utility;
 using SkiaSharp;
 
@@ -24,8 +25,12 @@ public enum ImageFailure
 /// <summary>
 /// Finds, stores and resizes episode images.
 ///
-/// The timeline holds only a file name; the bytes live beside the data file, outside the repo
-/// and off any server. See docs/image-support.md for the layout and the reasoning.
+/// The timeline holds only a file name; the bytes live in the timeline's own directory,
+/// outside the repo and off any server:
+///
+/// <code>&lt;timelines root&gt;/&lt;timeline id&gt;/images/&lt;file name&gt;</code>
+///
+/// See docs/image-support.md for the layout and the reasoning.
 /// </summary>
 public sealed class ImageStore
 {
@@ -57,31 +62,27 @@ public sealed class ImageStore
     }
 
     /// <summary>
-    /// Where images are read from and written to. The directory need not exist yet — it is
-    /// created on the first upload — so this is a resolved path, not a promise.
+    /// The timelines root. Each timeline's pictures live in <c>&lt;root&gt;/&lt;id&gt;/images</c>,
+    /// which need not exist yet — it is created on the first upload.
     /// </summary>
     public string Root => _root;
 
     public bool RootExists => Directory.Exists(_root);
 
     /// <summary>
-    /// Resolves the image root from configuration.
+    /// Opens the store over the timelines root.
     ///
-    /// IMAGE_ROOT_PATH wins if set; otherwise the root is derived as "images" beside the
-    /// data file. Deriving it is the default on purpose: two independently configured paths
-    /// can drift apart, and then the claim that a timeline is one portable directory quietly
-    /// stops being true.
+    /// There is no override for where images live, and deliberately so: a timeline's pictures
+    /// sit inside the timeline's own directory, which is the whole of what makes a timeline
+    /// one portable folder. A second configured path could only ever point somewhere that
+    /// breaks that.
     ///
-    /// Unlike DATA_FILE_PATH, a missing root is not a startup failure. Images are optional,
-    /// and a timeline with none is a perfectly normal timeline.
+    /// Unlike the timelines root itself, a missing image directory is not a startup failure.
+    /// Images are optional, and a timeline with none is a perfectly normal timeline.
     /// </summary>
-    public static ImageStore Create(string dataFilePath)
+    public static ImageStore Create(string timelinesRoot)
     {
-        var configured = Environment.GetEnvironmentVariable("IMAGE_ROOT_PATH");
-
-        var root = string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(dataFilePath)) ?? ".", "images")
-            : Path.GetFullPath(configured);
+        var root = Path.GetFullPath(timelinesRoot);
 
         var configuredCache = Environment.GetEnvironmentVariable("IMAGE_CACHE_PATH");
 
@@ -269,7 +270,8 @@ public sealed class ImageStore
         _ => "application/octet-stream"
     };
 
-    private string TimelineDirectory(Guid timelineId) => Path.Combine(_root, timelineId.ToString());
+    private string TimelineDirectory(Guid timelineId) =>
+        Path.Combine(_root, timelineId.ToString(), TimelineFileStore.ImagesDirectoryName);
 
     private static byte[]? Read(FileInfo file, ILogger logger)
     {

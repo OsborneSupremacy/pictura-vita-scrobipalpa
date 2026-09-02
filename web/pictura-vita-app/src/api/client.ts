@@ -1,6 +1,7 @@
 import type {
   ApiTimeline,
   ApiTimelineSummary,
+  CreateTimelineRequest,
   InsertCategoryRequest,
   InsertEpisodeRequest,
   UpdateCategoryRequest,
@@ -80,6 +81,40 @@ async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unkn
 }
 
 /**
+ * A POST whose answer matters — the server chooses the new resource's id, so the caller has
+ * nothing to construct it from. `send` is for the calls whose only useful answer is "it
+ * worked".
+ */
+async function create<T>(path: string, body: unknown): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch {
+    throw new ApiUnreachableError();
+  }
+
+  if (response.ok) return response.json() as Promise<T>;
+
+  if (response.status === 400) {
+    const problem = await response.json().catch(() => null);
+    const errors = problem?.errors as Record<string, string[]> | undefined;
+    if (errors) throw new Error(Object.values(errors).flat().join(' '));
+
+    // Not every 400 is a validation failure — a body the server cannot bind is one too, and
+    // its detail says which field it choked on. Better than the status line on its own.
+    const detail = problem?.detail ?? problem?.title;
+    if (typeof detail === 'string') throw new Error(detail);
+  }
+
+  throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}`);
+}
+
+/**
  * URL of an episode's image.
  *
  * `thumb` is generated and cached by the API; `full` is the original file untouched. A name
@@ -88,7 +123,7 @@ async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unkn
  */
 export function imageUrl(timelineId: string, name: string, size: 'thumb' | 'full'): string {
   return (
-    `${baseUrl}/timeline/${timelineId}/image/${encodeURIComponent(name)}` +
+    `${baseUrl}/timelines/${timelineId}/images/${encodeURIComponent(name)}` +
     (size === 'thumb' ? '?size=thumb' : '')
   );
 }
@@ -111,7 +146,7 @@ export async function uploadImage(timelineId: string, file: File, stem: string):
   let response: Response;
 
   try {
-    response = await fetch(`${baseUrl}/timeline/${timelineId}/image`, { method: 'POST', body });
+    response = await fetch(`${baseUrl}/timelines/${timelineId}/images`, { method: 'POST', body });
   } catch {
     throw new ApiUnreachableError();
   }
@@ -142,7 +177,7 @@ export async function fetchNarrative(timelineId: string, name: string): Promise<
 
   try {
     response = await fetch(
-      `${baseUrl}/timeline/${timelineId}/narrative/${encodeURIComponent(name)}`
+      `${baseUrl}/timelines/${timelineId}/narratives/${encodeURIComponent(name)}`
     );
   } catch {
     throw new ApiUnreachableError();
@@ -171,7 +206,7 @@ export async function saveNarrative(
   let response: Response;
 
   try {
-    response = await fetch(`${baseUrl}/timeline/${timelineId}/narrative`, {
+    response = await fetch(`${baseUrl}/timelines/${timelineId}/narratives`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, stem, text })
@@ -190,10 +225,23 @@ export async function saveNarrative(
 }
 
 export const api = {
-  timelineSummaries: () => get<ApiTimelineSummary[]>('/timelinesummaries'),
-  timelines: () => get<ApiTimeline[]>('/timelines'),
-  timeline: (id: string) => get<ApiTimeline>(`/timeline/${id}`),
-  randomTimeline: () => get<ApiTimeline>('/timeline/random'),
+  /**
+   * Every timeline present under the timelines directory, as summaries.
+   *
+   * There is no "fetch them all in full" any more, and deliberately: each timeline is its own
+   * file now, so that would mean the server parsing every one of them to draw a menu.
+   */
+  timelines: () => get<ApiTimelineSummary[]>('/timelines'),
+  timeline: (id: string) => get<ApiTimeline>(`/timelines/${id}`),
+  /**
+   * Creates an empty timeline and returns it, id and all.
+   *
+   * The id comes back from the server rather than being chosen here, because the id names the
+   * directory the timeline lives in — picking one client-side would be picking a path.
+   */
+  createTimeline: (request: CreateTimelineRequest) =>
+    create<ApiTimeline>('/timelines', request),
+  randomTimeline: () => get<ApiTimeline>('/timelines/random'),
   /**
    * The image file names actually present on disk for a timeline.
    *
@@ -201,7 +249,7 @@ export const api = {
    * out: discovering a missing image from a 404 mid-render means a flash of broken image and
    * a box that collapses afterwards.
    */
-  timelineImages: (id: string) => get<string[]>(`/timeline/${id}/images`),
+  timelineImages: (id: string) => get<string[]>(`/timelines/${id}/images`),
   /**
    * The narrative file names present on disk for a timeline.
    *
@@ -209,14 +257,21 @@ export const api = {
    * panel has to decide whether to offer "Read narrative" before it draws, and a button
    * that turns out to open nothing is worse than no button.
    */
-  timelineNarratives: (id: string) => get<string[]>(`/timeline/${id}/narratives`),
-  updateTimelineInfo: (request: UpdateTimelineInfoRequest) => send('PUT', '/timeline', request),
+  timelineNarratives: (id: string) => get<string[]>(`/timelines/${id}/narratives`),
+  updateTimelineInfo: (request: UpdateTimelineInfoRequest) =>
+    send('PUT', `/timelines/${request.timelineId}/info`, request),
 
-  insertCategory: (request: InsertCategoryRequest) => send('POST', '/category', request),
-  updateCategory: (request: UpdateCategoryRequest) => send('PUT', '/category', request),
-  deleteCategory: (categoryId: string) => send('DELETE', `/category/${categoryId}`),
+  insertCategory: (request: InsertCategoryRequest) =>
+    send('POST', `/timelines/${request.timelineId}/categories`, request),
+  updateCategory: (request: UpdateCategoryRequest) =>
+    send('PUT', `/timelines/${request.timelineId}/categories/${request.category.categoryId}`, request),
+  deleteCategory: (timelineId: string, categoryId: string) =>
+    send('DELETE', `/timelines/${timelineId}/categories/${categoryId}`),
 
-  insertEpisode: (request: InsertEpisodeRequest) => send('POST', '/episode', request),
-  updateEpisode: (request: UpdateEpisodeRequest) => send('PUT', '/episode', request),
-  deleteEpisode: (episodeId: string) => send('DELETE', `/episode/${episodeId}`)
+  insertEpisode: (request: InsertEpisodeRequest) =>
+    send('POST', `/timelines/${request.timelineId}/episodes`, request),
+  updateEpisode: (request: UpdateEpisodeRequest) =>
+    send('PUT', `/timelines/${request.timelineId}/episodes/${request.episode.episodeId}`, request),
+  deleteEpisode: (timelineId: string, episodeId: string) =>
+    send('DELETE', `/timelines/${timelineId}/episodes/${episodeId}`)
 };

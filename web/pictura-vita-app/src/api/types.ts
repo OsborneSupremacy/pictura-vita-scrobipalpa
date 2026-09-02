@@ -51,7 +51,7 @@ export interface ApiEpisode {
    * existed, as with `icon` and `color` on a category.
    *
    * Only the name is stored. Whether a file of that name actually exists is a separate
-   * question, answered by `GET /timeline/{id}/images`.
+   * question, answered by `GET /timelines/{id}/images`.
    */
   imageName: string;
   /**
@@ -59,7 +59,7 @@ export interface ApiEpisode {
    * null in files written before narratives existed.
    *
    * As with `imageName`, only the name is stored. What is in the file, and whether there is
-   * a file at all, are separate questions answered by `GET /timeline/{id}/narrative(s)`.
+   * a file at all, are separate questions answered by `GET /timelines/{id}/narratives`.
    */
   narrativeName: string;
   episodeType: number;
@@ -116,9 +116,27 @@ export interface ApiTimeline {
   categories: ApiCategory[];
 }
 
+/**
+ * Enough of a timeline to list it on the table of contents without loading it.
+ *
+ * The counts and the span come free with the parse the server does to build this, and they
+ * are what tells one timeline from another when a person keeps several.
+ */
 export interface ApiTimelineSummary {
   timelineId: string;
   title: string;
+  subtitle: string;
+  /** yyyy-MM-dd */
+  start: string;
+  /** yyyy-MM-dd; 9999-12-31 when ongoing */
+  end: string;
+  ongoing: boolean;
+  episodeCount: number;
+  categoryCount: number;
+}
+
+export interface CreateTimelineRequest {
+  timelineInfo: ApiTimelineInfo;
 }
 
 export interface InsertCategoryRequest {

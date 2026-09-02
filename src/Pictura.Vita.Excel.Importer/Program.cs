@@ -1,5 +1,4 @@
 using dotenv.net;
-using JsonFlatFileDataStore;
 using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Excel.Importer.Services;
 using Spectre.Console;
@@ -11,7 +10,7 @@ DotEnv.Load(new DotEnvOptions(overwriteExistingVars: false));
 var skipInvalid = args.Contains("--skip-invalid", StringComparer.OrdinalIgnoreCase);
 
 var sourceFile = Environment.GetEnvironmentVariable("SOURCE_EXCEL_FILE_PATH");
-var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
+var timelinesRoot = Environment.GetEnvironmentVariable("TIMELINES_ROOT_PATH");
 
 if (string.IsNullOrWhiteSpace(sourceFile) || !File.Exists(sourceFile))
 {
@@ -19,9 +18,9 @@ if (string.IsNullOrWhiteSpace(sourceFile) || !File.Exists(sourceFile))
     return 1;
 }
 
-if (string.IsNullOrWhiteSpace(dataFilePath))
+if (string.IsNullOrWhiteSpace(timelinesRoot))
 {
-    AnsiConsole.MarkupLine("[red]DATA_FILE_PATH is not set.[/] Copy .env.example to .env and set it.");
+    AnsiConsole.MarkupLine("[red]TIMELINES_ROOT_PATH is not set.[/] Copy .env.example to .env and set it.");
     return 1;
 }
 
@@ -77,7 +76,12 @@ var timeline = TransformerService.Transform(
     sourceFile,
     DateOnly.FromDateTime(DateTime.Today));
 
-var timelineProvider = new TimelineProvider(new DataStore(dataFilePath));
+// The workbook's path decides the timeline id, and the id decides the directory, so a
+// re-import replaces the timeline it wrote last time rather than stacking up another copy —
+// and everything the workbook has no column for goes with it. See docs/data-store.md.
+Directory.CreateDirectory(timelinesRoot);
+
+var timelineProvider = new TimelineProvider(new TimelineFileStore(timelinesRoot));
 var replaced = await timelineProvider.UpsertAsync(timeline);
 
 AnsiConsole.MarkupLine(
@@ -88,6 +92,6 @@ AnsiConsole.MarkupLine(
     timeline.Categories.Count,
     timeline.TimelineInfo.Start.ToString("yyyy-MM-dd"),
     timeline.TimelineInfo.End.ToString("yyyy-MM-dd"),
-    Markup.Escape(dataFilePath));
+    Markup.Escape(Path.Combine(timelinesRoot, timeline.TimelineId.ToString())));
 
 return 0;

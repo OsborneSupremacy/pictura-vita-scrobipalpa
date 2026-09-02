@@ -25,12 +25,13 @@ internal class EpisodeValidator : AbstractValidator<Episode>
         // the same reason ImageName is checked here — a name that could escape the narrative
         // root must not reach the store at all.
         //
-        // NotNull() matches the `required string` on the domain model. JsonFlatFileDataStore
-        // reads through Newtonsoft, which ignores C#'s `required`, so null is representable
-        // at runtime whatever the type says; this is where that gap is closed. It closes it
-        // on the *write* path only — a hand-edited file, or an old backup restored, still
-        // deserializes a missing property as null and hands it to the client on GET, which is
-        // why the coercions in the client's adapter and dialogs are still load-bearing.
+        // NotNull() matches the `required string` on the domain model. It used to be the only
+        // thing closing that gap, because the store read through Newtonsoft, which ignores
+        // C#'s `required`. TimelineFileStore reads with System.Text.Json and
+        // RespectNullableAnnotations, so a hand-edited file or an old backup carrying a null
+        // is now refused on the read path too. This stays as the check on the write path; the
+        // coercions in the client's adapter and dialogs are now belt and braces rather than
+        // the last line of defence.
         RuleFor(x => x.NarrativeName)
             .NotNull()
             .Must(name => string.IsNullOrEmpty(name) || NarrativeFileName.IsValid(name))

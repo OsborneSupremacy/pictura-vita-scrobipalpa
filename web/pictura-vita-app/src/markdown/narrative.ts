@@ -36,7 +36,7 @@ const md = new MarkdownIt({
 export interface NarrativeContext {
   timelineId: string;
   /**
-   * Image file names present on disk, from `GET /timeline/{id}/images`.
+   * Image file names present on disk, from `GET /timelines/{id}/images`.
    *
    * Checked before an `<img>` is emitted at all, rather than left to fail at load time. The
    * rest of the application already works this way — the layout and the detail panel both

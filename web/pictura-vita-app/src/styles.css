@@ -53,6 +53,79 @@ main { padding: 16px 20px 40px; }
 
 .app-header h1 { font-size: 20px; margin: 0; }
 
+/* On a timeline page the title doubles as the way back to the index. It is the only
+   navigation the app has, so it is left looking like the heading it also is. */
+.app-header h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-header h1 a:hover { text-decoration: underline; }
+
+/* ---- Table of contents ---- */
+
+.timeline-index-actions { margin: 16px 0 0; }
+
+.timeline-index ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-card {
+  display: block;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.timeline-card:hover {
+  border-color: #1d4ed8;
+}
+
+.timeline-card h2 {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+
+.timeline-card p { margin: 2px 0 0; }
+
+.timeline-card-span { font-size: 12px; }
+
+.timeline-card-counts { font-size: 12px; }
+
+.timeline-index.empty {
+  max-width: 46em;
+  margin-top: 16px;
+}
+
+.timeline-index.empty h2 { font-size: 15px; margin: 0 0 6px; }
+
+.timeline-index button.primary {
+  padding: 4px 12px;
+  font: inherit;
+  border: 1px solid #1d4ed8;
+  border-radius: 4px;
+  background: #1d4ed8;
+  color: #fff;
+  cursor: pointer;
+}
+
+.timeline-index.empty code {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
 /* The title stays optically centred: the button is taken out of flow rather than
    being laid out beside it. */
 .band-add {

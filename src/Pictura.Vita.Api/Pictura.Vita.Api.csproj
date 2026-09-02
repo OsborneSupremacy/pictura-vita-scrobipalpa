@@ -10,7 +10,6 @@
         <PackageReference Include="dotenv.net" Version="4.0.2" />
         <PackageReference Include="FluentValidation" Version="12.1.1" />
         <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
-        <PackageReference Include="JsonFlatFileDataStore" Version="2.4.3" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
         <PackageReference Include="SkiaSharp" Version="4.151.1" />

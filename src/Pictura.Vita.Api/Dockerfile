@@ -28,8 +28,8 @@ COPY --from=build /app .
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
-# No DATA_FILE_PATH default on purpose. An image that guesses where your timeline lives is
-# an image that can create an empty one somewhere you did not mean; the API already fails at
+# No TIMELINES_ROOT_PATH default on purpose. An image that guesses where your timelines live
+# is an image that can create an empty one somewhere you did not mean; the API already fails at
 # startup with an explicit message when the variable is unset, which is the better outcome.
 
 ENTRYPOINT ["dotnet", "Pictura.Vita.Api.dll"]

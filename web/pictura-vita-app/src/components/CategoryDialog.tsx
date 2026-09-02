@@ -185,7 +185,7 @@ export function CategoryDialog({ timeline, onSaved, onClose }: Props) {
       }
 
       // Removals last, so a failure earlier leaves the categories still standing.
-      for (const categoryId of removing) await api.deleteCategory(categoryId);
+      for (const categoryId of removing) await api.deleteCategory(timeline.timelineId, categoryId);
 
       onSaved();
     } catch (problem: unknown) {

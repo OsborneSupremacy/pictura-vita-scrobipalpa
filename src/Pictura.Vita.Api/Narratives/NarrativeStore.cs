@@ -1,4 +1,5 @@
 using System.Text;
+using Pictura.Vita.Data.Providers;
 using Pictura.Vita.Utility;
 
 namespace Pictura.Vita.Api.Narratives;
@@ -6,8 +7,12 @@ namespace Pictura.Vita.Api.Narratives;
 /// <summary>
 /// Finds, reads and writes episode narratives — the long-form Markdown account of an episode.
 ///
-/// The timeline holds only a file name; the text lives beside the data file in a directory
-/// derived from it, exactly as images do. See docs/narrative-support.md for the layout and
+/// The timeline holds only a file name; the text lives in the timeline's own directory,
+/// exactly as images do:
+///
+/// <code>&lt;timelines root&gt;/&lt;timeline id&gt;/narratives/&lt;file name&gt;</code>
+///
+/// See docs/narrative-support.md for the layout and
 /// the reasoning; the short version is that prose belongs in a text file, where a diff is
 /// readable and any editor can open it, not in one escaped JSON string.
 /// </summary>
@@ -26,34 +31,26 @@ public sealed class NarrativeStore
     private NarrativeStore(string root) => _root = root;
 
     /// <summary>
-    /// Where narratives are read from and written to. The directory need not exist yet — it
-    /// is created on the first save — so this is a resolved path, not a promise.
+    /// The timelines root. Each timeline's prose lives in
+    /// <c>&lt;root&gt;/&lt;id&gt;/narratives</c>, which need not exist yet — it is created on
+    /// the first save.
     /// </summary>
     public string Root => _root;
 
     public bool RootExists => Directory.Exists(_root);
 
     /// <summary>
-    /// Resolves the narrative root from configuration.
+    /// Opens the store over the timelines root.
     ///
-    /// NARRATIVE_ROOT_PATH wins if set; otherwise the root is "narratives" beside the data
-    /// file, for the same reason the image root is derived rather than configured: two
-    /// independently configured paths drift apart, and then the claim that a timeline is one
-    /// portable directory quietly stops being true.
+    /// As with images there is no override for where prose lives: an episode's narrative sits
+    /// inside its own timeline's directory, which is what makes a timeline one portable folder
+    /// rather than three separately configured paths that drift.
     ///
-    /// A missing root is not a startup failure. Narratives are optional, and an episode
-    /// without one is a perfectly ordinary episode.
+    /// A missing narrative directory is not a startup failure. Narratives are optional, and an
+    /// episode without one is a perfectly ordinary episode.
     /// </summary>
-    public static NarrativeStore Create(string dataFilePath)
-    {
-        var configured = Environment.GetEnvironmentVariable("NARRATIVE_ROOT_PATH");
-
-        var root = string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(dataFilePath)) ?? ".", "narratives")
-            : Path.GetFullPath(configured);
-
-        return new NarrativeStore(root);
-    }
+    public static NarrativeStore Create(string timelinesRoot) =>
+        new(Path.GetFullPath(timelinesRoot));
 
     /// <summary>
     /// The narrative file names present for a timeline.
@@ -191,7 +188,8 @@ public sealed class NarrativeStore
         }
     }
 
-    private string TimelineDirectory(Guid timelineId) => Path.Combine(_root, timelineId.ToString());
+    private string TimelineDirectory(Guid timelineId) =>
+        Path.Combine(_root, timelineId.ToString(), TimelineFileStore.NarrativesDirectoryName);
 
     /// <summary>
     /// Writes under a temporary name and moves it into place, so a reader never sees a

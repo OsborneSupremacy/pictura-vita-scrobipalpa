@@ -348,10 +348,11 @@ Page composition: top axis → category bands → bottom axis.
 
 ## 7. Reimplementation notes for this repo
 
-Current state: `Pictura.Vita.Api` (minimal API over `JsonFlatFileDataStore`) serves
-`Timeline { TimelineInfo, Episodes[], Categories[] }`. The Next.js app under `web/pictura-vita-web`
-is **to be discarded** and replaced with React + Vite — the data must never reach a server, so a
-static SPA against a localhost API fits the constraint where SSR does not.
+Current state: `Pictura.Vita.Api` (a minimal API over `TimelineFileStore`, one folder per
+timeline — see `data-store.md`) serves `Timeline { TimelineInfo, Episodes[], Categories[] }`.
+The Next.js app under `web/pictura-vita-web` is **to be discarded** and replaced with React +
+Vite — the data must never reach a server, so a static SPA against a localhost API fits the
+constraint where SSR does not.
 
 **Hard constraint:** the timeline data is identity-verification-grade personal information and must
 never be stored on a web server. Real data lives outside the repo (path in `.env`, which is
